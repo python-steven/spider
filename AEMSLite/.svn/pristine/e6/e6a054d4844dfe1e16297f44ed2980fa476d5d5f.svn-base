@@ -1,0 +1,14 @@
+from django.urls import path
+from .views import webapp_login,webapp_PartItem,webapp_Filtrate
+from .views import webapp_ListFiltrate,webapp_MaintainFiltrate,webapp_MaintainCommit,webapp_MaintainList
+
+app_name ="webapp"
+urlpatterns = [
+    path("login/", webapp_login,name="webapp_login"),
+    path("PartItem/", webapp_PartItem,name="webapp_PartItem"),
+    path("Filtrate/", webapp_Filtrate,name="webapp_Filtrate"),
+    path("ListFiltrate/", webapp_ListFiltrate,name="webapp_ListFiltrate"),
+    path("MaintainFiltrate/", webapp_MaintainFiltrate,name="webapp_MaintainFiltrate"),
+    path("MaintainCommit/", webapp_MaintainCommit,name="webapp_MaintainCommit"),
+    path("MaintainList/", webapp_MaintainList,name="webapp_MaintainList")
+]

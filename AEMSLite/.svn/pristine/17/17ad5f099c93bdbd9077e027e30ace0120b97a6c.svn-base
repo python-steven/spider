@@ -1,0 +1,478 @@
+from django.shortcuts import render
+import time
+from datetime import datetime
+import os
+import psycopg2
+import json
+from django.http import JsonResponse,HttpResponse
+from app.login.models import User
+from app import restful
+from django.views.decorators.csrf import csrf_exempt
+
+# Create your views here.
+#用户登录
+@csrf_exempt
+def webapp_login(request):
+    try:
+        if request.method == "POST":
+            try:
+                data = json.loads(request.body)
+                input_user_id = data.get('user_id','')
+                input_password = data.get('u_password','')
+            except:
+                return restful.params_error(message='data error',data='error')
+            if input_user_id != "":
+                user = User.objects.get(EmployeeId=input_user_id)
+                user_password = user.Password
+                if (user_password == input_password):
+                    return restful.ok(message='login success',data="ok")
+                else:
+                    return restful.params_error(message='password error',data='error')
+            else:
+                return restful.params_error(message='account error',data='error')
+            
+        else:
+            return restful.params_error(message='method error',data='error')
+    except Exception as e:
+        return restful.params_error(message="网络错误",data='error')
+
+#设备列表筛选
+@csrf_exempt
+def webapp_ListFiltrate(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            input_start_time = data.get('start_time','')
+            input_end_time = data.get('end_time','')
+            input_sn = data.get('sn','')
+            input_part_name = data.get('part_name','')
+            input_maintainer = data.get('maintainer','')
+            '''
+            input_start_time = request.POST.get('start_time','')
+            input_end_time = request.POST.get('end_time','')
+            input_sn = request.POST.get('sn','')
+            input_part_name = request.POST.get('part_name','')
+            input_maintainer = request.POST.get('maintainer','')
+            '''
+        except:
+            return JsonResponse({"data":"get data error"}, safe=False, json_dumps_params={'ensure_ascii': False})
+        #连接数据库
+        try:
+            conn = psycopg2.connect(
+                        database="aemslite",
+                        #host="127.0.0.1",
+                        host="192.168.3.155",
+                        user="postgres",
+                        password = "1234qwer!@#$QWER",
+                        port = 5432,)
+            cur=conn.cursor()
+        except:
+            msg_err = "error: connect DB fail "
+            return JsonResponse({"data":msg_err}, safe=False, json_dumps_params={'ensure_ascii': False})
+        #获取数据
+        sql = 'select * FROM "Configuration" '
+        cur.execute(sql)
+        data = cur.fetchall()
+        count_max_value = int(data[1][2])
+        day_max_value = int(data[2][2])
+        #'''
+        sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate",'\
+                ' "Maintainer","NextCheckCount","TrnDate" FROM "PartItem" WHERE 1=1'
+        if input_sn != "":
+            sql = sql+' AND "SN" =\'' + input_sn + '\''
+        if input_part_name != "":
+            sql = sql+' AND "PartName" =\'' + input_part_name + '\''
+        if input_maintainer != "":
+            sql = sql+' AND "Maintainer" =\'' + input_maintainer + '\''
+        #判断是否在选定的时间范围内
+        if input_start_time != "" and input_end_time != "":
+            start_time=datetime(int(input_start_time[0:4]),int(input_start_time[5:7]),int(input_start_time[8:10]),00,00,00)
+            end_time=datetime(int(input_end_time[0:4]),int(input_end_time[5:7]),int(input_end_time[8:10]),23,59,59)
+            sql = sql+' AND "TrnDate">= \'%{0}%\' AND "TrnDate"<= \'%{1}%\''.format(start_time, end_time)
+        elif input_start_time != "" and input_end_time == "":
+            start_time=datetime(int(input_start_time[0:4]),int(input_start_time[5:7]),int(input_start_time[8:10]))
+            sql = sql+' AND "TrnDate">= \'%{0}%\''.format(start_time)
+        elif input_start_time == "" and input_end_time != "":
+            end_time=datetime(int(input_end_time[0:4]),int(input_end_time[5:7]),int(input_end_time[8:10]),23,59,59)
+            sql = sql+' AND "TrnDate"<= \'%{0}%\''.format(end_time)
+        cur.execute(sql)
+        data = cur.fetchall()
+        i=0
+        data_arr = []
+        for i in range(len(data)):
+            data_dict_1={}
+            date_all = str(data[i][6])
+            if len(date_all) > 6:
+                date = date_all[0:10]
+                #检验是否超标
+                count_result_int = int(data[i][8]) - int(data[i][4])
+                try:
+                    day_result_int =(datetime(int(date_all[0:4]),int(date_all[5:7]),int(date_all[8:10])) - datetime.now()).days +1
+                except:
+                    day_result_int  = 0
+                if count_result_int < 0 or day_result_int<0:
+                    count_result_str = 'OVERPROOF'
+                else :
+                    if count_result_int <= count_max_value or day_result_int <= day_max_value:
+                        count_result_str = 'WARNING'
+                    else:
+                        count_result_str = 'NORMAL'
+                data_dict_1.update({"Id":data[i][0],"SN":data[i][1],"PartName":data[i][2],"CheckCycleCount":data[i][3]\
+                                    ,"UsedTimes":data[i][4],"CheckCycle":data[i][5],"NextCheckDate":date,"Maintainer":data[i][7]\
+                                    ,"Status":count_result_str})
+            if len(data_dict_1) != 0:
+                data_arr.append(data_dict_1)
+        return restful.ok(data=data_arr)
+        #'''
+    else:
+        return restful.method_error(message='method error',data='error')
+
+
+#设备筛选
+@csrf_exempt
+def webapp_Filtrate(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            input_sn = data.get('sn','')
+            input_pn = data.get('pn','')
+            input_date = data.get('date','')
+            input_status = data.get('status','')
+            '''
+            input_sn = request.POST.get('sn','')
+            input_pn = request.POST.get('pn','')
+            input_date = request.POST.get('date','')
+            input_status = request.POST.get('status','')
+            '''
+        except:
+            return restful.params_error(message='get data error',data='error')
+        #连接数据库
+        try:
+            conn = psycopg2.connect(
+                        database="aemslite",
+                        #host="127.0.0.1",
+                        host="192.168.3.155",
+                        user="postgres",
+                        password = "1234qwer!@#$QWER",
+                        port = 5432,)
+            cur=conn.cursor()
+        except:
+            msg_err = "error: connect DB fail "
+            return restful.params_error(message=msg_err,data='error')
+        #获取数据
+        sql = 'select * FROM "Configuration" '
+        cur.execute(sql)
+        data = cur.fetchall()
+        count_max_value = int(data[1][2])
+        day_max_value = int(data[2][2])
+        #'''
+        sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate",'\
+                ' "Maintainer","NextCheckCount" FROM "PartItem" WHERE 1=1'
+        if input_sn != "":
+            sql = sql+' AND "SN" =\'' + input_sn + '\''
+        if input_pn != "":
+            sql = sql+' AND "PN" =\'' + input_pn + '\''
+        if input_date != "":
+            next_time=datetime(int(input_date[0:4]),int(input_date[5:7]),int(input_date[8:10]),00,00,00)
+            max_next_time=datetime(int(input_date[0:4]),int(input_date[5:7]),int(input_date[8:10]),23,59,59)
+            #sql = sql+' AND "NextCheckDate">= \'%{0}%\' AND "NextCheckDate"<= \'%{1}%\''.format(next_time, max_next_time)
+            sql = sql+' AND "NextCheckDate"<= \'%{0}%\''.format(max_next_time)
+        cur.execute(sql)
+        data = cur.fetchall()
+        i=0
+        data_arr = []
+        for i in range(len(data)):
+            data_dict_1={}
+            date_all = str(data[i][6])
+            if len(date_all) > 6:
+                date = date_all[0:10]
+            #检验是否超标
+            count_result_int = int(data[i][8]) - int(data[i][4])
+            try:
+                day_result_int = (datetime(int(date_all[0:4]),int(date_all[5:7]),int(date_all[8:10])) - datetime.now()).days + 1
+            except:
+                day_result_int = 0
+            if count_result_int < 0 or day_result_int<0:
+                count_result_str = 'OVERPROOF'
+            else :
+                if count_result_int <= count_max_value or day_result_int <= day_max_value:
+                    count_result_str = 'WARNING'
+                else:
+                    count_result_str = 'NORMAL'
+            if input_status != "":
+                if count_result_str == input_status:
+                    data_dict_1.update({"Id":data[i][0],"SN":data[i][1],"PartName":data[i][2],"CheckCycleCount":data[i][3]\
+                                        ,"UsedTimes":data[i][4],"CheckCycle":data[i][5],"NextCheckDate":date,"Maintainer":data[i][7]\
+                                        ,"Status":count_result_str})
+                else:
+                    continue
+            else:
+                data_dict_1.update({"Id":data[i][0],"SN":data[i][1],"PartName":data[i][2],"CheckCycleCount":data[i][3]\
+                                    ,"UsedTimes":data[i][4],"CheckCycle":data[i][5],"NextCheckDate":date,"Maintainer":data[i][7]\
+                                    ,"Status":count_result_str})
+            if len(data_dict_1) != 0:
+                data_arr.append(data_dict_1)
+        return restful.ok(data=data_arr)
+        #'''
+    else:
+        return restful.method_error(message='method error',data='error')
+
+#设备保养筛选
+@csrf_exempt
+def webapp_MaintainFiltrate(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            input_start_time = data.get('start_time','')
+            input_end_time = data.get('end_time','')
+            input_sn = data.get('sn','')
+            input_pn = data.get('pn','')
+            input_part_name = data.get('part_name','')
+            input_operator = data.get('operator','')
+            '''
+            input_start_time = request.POST.get('start_time','')
+            input_end_time = request.POST.get('end_time','')
+            input_sn = request.POST.get('sn','')
+            input_pn = request.POST.get('pn','')
+            input_part_name = request.POST.get('part_name','')
+            input_operator = request.POST.get('operator','')
+            '''
+        except:
+            return restful.params_error(message="get data error",data='error')
+        #连接数据库
+        try:
+            conn = psycopg2.connect(
+                        database="aemslite",
+                        host="192.168.3.155",
+                        user="postgres",
+                        password = "1234qwer!@#$QWER",
+                        port = 5432,)
+            cur=conn.cursor()
+        except:
+            return restful.params_error(message=msg_err,data='error')
+        #获取数据
+        #'''
+        sql = 'select "Id","SN","PN","PartName","Spec" FROM "PartItem" WHERE 1=1'
+        if input_sn != "":
+            sql = sql+' AND "SN" =\'' + input_sn + '\''
+        if input_part_name != "":
+            sql = sql+' AND "PartName" =\'' + input_part_name + '\''
+        if input_pn != "":
+            sql = sql+' AND "PN" =\'' + input_pn + '\''
+        cur.execute(sql)
+        data = cur.fetchall()
+        i=0
+        data_arr = []
+        for i in range(len(data)):
+            data_dict_1={}
+            try:
+                partitem_id = data[i][0]
+                sn = data[i][1]
+                pn = data[i][2]
+                spec = data[i][4]
+                sql = 'select "OperatorId" FROM "MaintenanceLog" WHERE "PartItemId"= %d' % data[i][0]
+                cur.execute(sql)
+                data1 = cur.fetchall()
+                
+            except:
+                continue
+            try:
+                sql = 'select "Name" FROM "User" WHERE "Id"= %d' % data1[0][0]
+                cur.execute(sql)
+                data2 = cur.fetchall()
+                operator = data2[0][0]
+            except:
+                continue
+            if input_operator != "":
+                if operator != input_operator:
+                    continue
+                else:
+                    try:
+                        sql = 'select "Status","Content","MaintenanceDate" FROM "MaintenanceLog" WHERE "PartItemId"= %d' % partitem_id
+                        #判断是否在选定的时间范围内
+                        if input_start_time != "" and input_end_time != "":
+                            start_time=datetime(int(input_start_time[0:4]),int(input_start_time[5:7]),int(input_start_time[8:10]),00,00,00)
+                            end_time=datetime(int(input_end_time[0:4]),int(input_end_time[5:7]),int(input_end_time[8:10]),23,59,59)
+                            sql = sql+' AND "MaintenanceDate">= \'%{0}%\' AND "MaintenanceDate"<= \'%{1}%\''.format(start_time, end_time)
+                        elif input_start_time != "" and input_end_time == "":
+                            start_time=datetime(int(input_start_time[0:4]),int(input_start_time[5:7]),int(input_start_time[8:10]))
+                            sql = sql+' AND "MaintenanceDate">= \'%{0}%\''.format(start_time)
+                        elif input_start_time == "" and input_end_time != "":
+                            end_time=datetime(int(input_end_time[0:4]),int(input_end_time[5:7]),int(input_end_time[8:10]),23,59,59)
+                            sql = sql+' AND "MaintenanceDate"<= \'%{0}%\''.format(end_time)
+                        cur.execute(sql)
+                        data3 = cur.fetchall()
+                    except:
+                        continue
+                    try:
+                        status = data3[0][0]
+                        content = data3[0][1]
+                        date = data3[0][2]
+                        date = str(date)
+                        date = date[0:10]
+                    except:
+                        continue
+            else:
+                try:
+                    sql = 'select "Status","Content","MaintenanceDate" FROM "MaintenanceLog" WHERE "PartItemId"= %d' % partitem_id
+                    #判断是否在选定的时间范围内
+                    if input_start_time != "" and input_end_time != "":
+                        start_time=datetime(int(input_start_time[0:4]),int(input_start_time[5:7]),int(input_start_time[8:10]),00,00,00)
+                        end_time=datetime(int(input_end_time[0:4]),int(input_end_time[5:7]),int(input_end_time[8:10]),23,59,59)
+                        sql = sql+' AND "MaintenanceDate">= \'%{0}%\' AND "MaintenanceDate"<= \'%{1}%\''.format(start_time, end_time)
+                    elif input_start_time != "" and input_end_time == "":
+                        start_time=datetime(int(input_start_time[0:4]),int(input_start_time[5:7]),int(input_start_time[8:10]))
+                        sql = sql+' AND "MaintenanceDate">= \'%{0}%\''.format(start_time)
+                    elif input_start_time == "" and input_end_time != "":
+                        end_time=datetime(int(input_end_time[0:4]),int(input_end_time[5:7]),int(input_end_time[8:10]),23,59,59)
+                        sql = sql+' AND "MaintenanceDate"<= \'%{0}%\''.format(end_time)
+                    cur.execute(sql)
+                    data3 = cur.fetchall()
+                except:
+                    continue
+                try:
+                    status = data3[0][0]
+                    content = data3[0][1]
+                    date = data3[0][2]
+                    date = str(date)
+                    date = date[0:10]
+                except:
+                    continue
+            data_dict_1.update({"Id":partitem_id,"SN":sn,"PN":pn,"Spec":spec,"Status":status,"Operator":operator\
+                                ,"Content":content,"MaintenanceDate":date})
+            if len(data_dict_1) != 0:
+                data_arr.append(data_dict_1)
+        return restful.ok(data=data_arr)
+    else:
+        return restful.method_error(message='method error',data='error')
+
+#设备列表数据
+def webapp_PartItem(request):
+    if request.method == "GET":
+        data_dict = {}
+        #连接数据库
+        try:
+            conn = psycopg2.connect(
+                        database="aemslite",
+                        host="192.168.3.155",
+                        user="postgres",
+                        password = "1234qwer!@#$QWER",
+                        port = 5432,)
+            cur=conn.cursor()
+        except:
+            msg_err = "error: connect DB fail "
+            data_dict = {"data": msg_err}
+            return JsonResponse(data_dict, safe=False, json_dumps_params={'ensure_ascii': False})
+        #获取数据
+        sql = 'select * FROM "Configuration" '
+        cur.execute(sql)
+        data = cur.fetchall()
+        count_max_value = int(data[1][2])
+        day_max_value = int(data[2][2])
+        #return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii': False})
+        
+        #'''
+        try:
+            sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate",'\
+            ' "Maintainer","NextCheckCount" FROM "PartItem" '
+            #sql = 'select "PartName" FROM "PartItem" '
+            cur.execute(sql)
+            data = cur.fetchall()
+        except:
+            msg_err = "error: get DB PartItem data fail "
+            data_dict = {"data": msg_err}
+            return JsonResponse(data_dict, safe=False, json_dumps_params={'ensure_ascii': False})
+        i=0
+        data_arr = []
+        for i in range(len(data)):
+            data_dict_1={}
+            date_all = str(data[i][6])
+            if len(date_all) > 6:
+                date = date_all[0:10]
+            #检验是否超标
+            count_result_int = int(data[i][8]) - int(data[i][4])
+            try:
+                day_result_int =(datetime(int(date_all[0:4]),int(date_all[5:7]),int(date_all[8:10])) - datetime.now()).days +1
+            except:
+                day_result_int  = 0
+            if count_result_int < 0 or day_result_int<0:
+                count_result_str = 'OVERPROOF'
+            else :
+                if count_result_int <= count_max_value or day_result_int <= day_max_value:
+                    count_result_str = 'WARNING'
+                else:
+                    count_result_str = 'NORMAL'
+            data_dict_1.update({"Id":data[i][0],"SN":data[i][1],"PartName":data[i][2],"CheckCycleCount":data[i][3]\
+                                ,"UsedTimes":data[i][4],"CheckCycle":data[i][5],"NextCheckDate":date,"Maintainer":data[i][7]\
+                                ,"Status":count_result_str})
+            data_arr.append(data_dict_1)
+        data_dict = {"data":data_arr}
+        return JsonResponse(data_dict, safe=False, json_dumps_params={'ensure_ascii': False})
+        #return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii': False})
+        #'''
+
+#设备保养记录
+def webapp_MaintenanceLog(request):
+    if request.method == "GET":
+        data_dict = {}
+        #连接数据库
+        try:
+            conn = psycopg2.connect(
+                        database="aemslite",
+                        #host="127.0.0.1",
+                        host="10.41.95.106",
+                        user="postgres",
+                        password = "1234qwer!@#$QWER",
+                        port = 5432,)
+            cur=conn.cursor()
+        except:
+            msg_err = "error: connect DB fail "
+            data_dict = {"data": msg_err}
+            return JsonResponse(data_dict, safe=False, json_dumps_params={'ensure_ascii': False})
+        #获取数据
+        try:
+            sql = 'select "Id","PartItemId","Status","OperatorId","Content","MaintenanceDate" FROM "MaintenanceLog" '
+            #sql = 'select * FROM "MaintenanceLog" '
+            cur.execute(sql)
+            data = cur.fetchall()
+        except:
+            msg_err = "error: get DB MaintenanceLog data fail "
+            data_dict = {"data": msg_err}
+            return JsonResponse(data_dict, safe=False, json_dumps_params={'ensure_ascii': False})
+        #'''
+        i=0
+        data_arr = []
+        for i in range(len(data)):
+            data_dict_1={}
+            sn = select_data("SN","PartItem","Id",data[i][1])
+            pn = select_data("PN","PartItem","Id",data[i][1])
+            spec = select_data("Spec","PartItem","Id",data[i][1])
+            operator = select_data("Name","User","Id",data[i][3])
+            date = str(data[i][5])
+            if len(date) > 6:
+                date = date[0:10]
+            data_dict_1.update({"Id":data[i][0],"SN":sn,"PN":pn,"Spec":spec,"Status":data[i][2],"Operator":operator,"Content":data[i][4],"MaintenanceDate":date})
+            data_arr.append(data_dict_1)
+        data_dict = {"data":data_arr}
+        return JsonResponse(data_dict, safe=False, json_dumps_params={'ensure_ascii': False})
+        #'''
+        #return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii': False})
+
+#任意DB取值        
+def select_data(str_key1,table_name,str_key2,str_value):
+    conn = psycopg2.connect(
+                        database="aemslite",
+                        #host="127.0.0.1",
+                        host="10.41.95.106",
+                        user="postgres",
+                        password = "1234qwer!@#$QWER",
+                        port = 5432,)
+    cur=conn.cursor()
+    try:
+        sql= 'select \"%s\" FROM \"%s\" WHERE \"%s\"=%d' % (str_key1,table_name,str_key2,str_value)
+        cur.execute(sql)
+    except:
+        sql= 'select \"%s\" FROM \"%s\" WHERE \"%s\"=\"%s\" ' % (str_key1,table_name,str_key2,str_value)
+        cur.execute(sql)
+    data = cur.fetchall()
+    return data[0][0]

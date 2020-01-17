@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "_http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="_http://www.w3.org/1999/xhtml">
+	<head>
+		<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+		<style type="text/css">
+	    	.title_row{
+			    color: #000000 !important;
+			    font-weight: bold !important;
+			    background-color: #DDDDDD !important;
+			}
+
+			.main_table td{
+				border-bottom: 1px groove #D8D8D8;
+			}
+			.main_table {
+				border-bottom: 1px groove #D8D8D8;
+				font-size:11px;
+			}
+
+			.odd_row{
+			    background-color: #FFFFFF;
+			}
+
+	    </style>
+	</head>
+	<body >
+		<div style="font-family: Calibri;">
+			{% ifequal action 'approved' %}
+			<div >Dear {{ applicant }},</div>
+				<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ signer }} has approved your budget code eform.</div>
+				<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;预算编码：{{ budget_code }}</div>
+			{% endifequal %}
+			{% ifequal action 'rejected' %}
+			<div >Dear {{applicant}},</div>
+				<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{signer}} has rejected your budget code eform.</div>
+				<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The reason is:{{reason}}</div>
+			{% endifequal %}
+			{% ifequal action 'canceled' %}
+			<div >Dear {{signer}},</div>
+				<div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{applicant}} has canceled the budget code eform.</div>
+			{% endifequal %}
+		</div>
+		<div align="center" id="reason_div" style="width:100%;margin:15 0 15 0;">
+			<table width="100%" align="center" style="margin:5px 0px 0px 0px;font-family: Calibri;">
+				<tr align="center">
+					<td class="title_row" width="8%">開單狀況</td>
+					<td class="title_row" width="8%">申请部门</td>			
+					<td class="title_row" width="8%">申請日期</td>
+					<td class="title_row" width="8%">PIC</td>
+					<td class="title_row" width="21%">設備名稱/治具類型</td>
+					<td class="title_row" width="15%">規格/型號/版本</td>
+					<td class="title_row" width="8%">單價</td>
+					<td class="title_row" width="8%">總費用</td>
+					<td class="title_row" width="8%">客戶 </td>
+				</tr>
+				{% for one_budget_code in budget_code_list %}
+					<tr align="center">
+						<td>{{ one_budget_code.BillingType }}</td>
+						<td>{{ one_budget_code.Department }}</td>
+						<td>{{ one_budget_code.ApplyDate }}</td>
+						<td>{{ one_budget_code.Pic }}</td>
+						<td>{{ one_budget_code.ProductName }}</td>
+						<td>{{ one_budget_code.Model }}</td>
+						<td>{{ one_budget_code.UnitPrice }}</td>
+						<td>{{ one_budget_code.count_fee }}</td>
+						<td>{{ one_budget_code.Customer }}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		</div>
+
+		<div align="left" style="margin:15 0 15 0;font-family: Calibri;">
+			<div>THIS EMAIL WAS SENT BY AEMSLite SERVER AUTOMATICALLY. PLEASE DON'T DIRECTLY REPLY!!!</div>
+			AEMS Lite System <a href="http://10.41.95.89:90/index/">http://10.41.95.106:90/index/</a>
+		</div>
+	</body>
+</html>

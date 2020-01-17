@@ -1,0 +1,120 @@
+from django.shortcuts import render
+from app.login.models import PartItemResult,PartItem
+from app.DBexcel.mod_excel import Excel_operation
+from aemslite_db_test.settings import BASE_DIR
+from app.mail import send_mail
+from django.db import connection
+from . import mod_logger
+import time,datetime
+import os, sys
+
+# def crontab_test():
+#     check_NGRate()
+#     Check_monitor_equipment()
+#     print(datetime.datetime.now())
+
+logger = mod_logger.Logger("debug")     # 日志记录
+
+
+def insert_many_to_partItemResult():    # 批量插入PartItemResult表的数据
+    pathname = os.path.join(BASE_DIR, 'app/DBexcel')
+    excel_operation = Excel_operation(pathname)
+
+    try:
+        file_paths = excel_operation.get_xlsx_list()    #获取目录下的excel文件列表
+    except Exception as e:
+        file_paths = []
+        logger.error("从目录中获取excel文件列表失败,异常%s\n"%str(e))
+
+    count = 0  # 统计多少行数据
+
+    for file_path in file_paths:
+        try:
+            rows = excel_operation.read_by_row(file_path,0)
+            insert_list = []
+            for row in rows[1:]:
+                # print(data[12])
+                # timearry = datetime.datetime.strptime(data[12], "%m/%d/%Y %I:%M:%S %p")
+                # data[12] = timearry.strftime('%Y-%m-%d %I:%M:%S')
+                # print('data[12]')
+                if 'Fail' in row[10]:
+                    row[10] = 'FAIL'
+                else:
+                    row[10] = 'PASS'
+                case = PartItemResult(
+                    USN=row[0],SN=row[1],OSN=row[2],Asset=row[3],
+                    PN=row[4],PartName=row[5],Spec=row[6],
+                    UsedTimes=row[7],Stage=row[8],FixtureId=row[9],
+                    Result=row[10],ErrorCode=row[11],TrnDate=row[12],
+                )
+                insert_list.append(case)
+                count += 1
+            PartItemResult.objects.bulk_create(insert_list)
+        except Exception as e:
+            filename = excel_operation.solved_backup(file_path)
+            logger.error('读文件"%s"失败，异常%s\n' % (filename, str(e)))
+        else:
+            excel_operation.solved_backup(file_path)
+
+    text = 'PartItemResult - insert %s rows\n'%(str(count))
+    if count==0:
+        logger.warning(text)
+    else:
+        logger.info(text)
+
+
+def update_for_partItem():  # 批量插入到PartItem 表的数据
+    sql = 'select max("USN"),"SN",max("OSN"),max("PN"),max("PartName"),max("Spec"),max("UsedTimes") as "UsedTimes",' \
+          'count(case when "Result"=\'FAIL\' then "Result" else null end) as "ErrorCounts",max("TrnDate") as TrnDate ' \
+          'from "PartItemResult" group by "SN";'
+    insert_list = []
+
+    with connection.cursor() as cursor:
+        start_time = time.time()
+        cursor.execute(sql)
+        datas = cursor.fetchall()
+
+    count_in = 0  # 插入统计
+    count_up = 0  # 更新统计
+
+    for data in datas:
+        SN_foo = PartItem.objects.filter(SN=data[1])
+        NG_rate = round(data[7] / data[6], 2) if data[6] > 0 else 0
+        if SN_foo:
+            SN_foo[0].UsedTimes = data[6]
+            SN_foo[0].ErrorCounts = data[7]
+            SN_foo[0].TruDate = data[8]
+            SN_foo[0].NGRate = NG_rate
+            SN_foo[0].save()
+            count_up += 1
+        else:
+            case = PartItem(
+                SN=data[1], OSN=data[2],PN=data[3],
+                PartName=data[4], Spec=data[5],
+                UsedTimes=data[6], NextCheckDate=None,
+                ErrorCounts=data[7],TrnDate=data[8],
+                NGRate=NG_rate,
+            )
+            insert_list.append(case)
+            count_in += 1
+
+    if insert_list:
+        PartItem.objects.bulk_create(insert_list)
+    logger.info(
+        'PartItem - update %s and insert %s\n' % (str(count_up), str(count_in))
+    )
+
+def getYesterday():
+    today = datetime.date.today()
+    one_day = datetime.timedelta(days=1)
+    yesterday = today-one_day
+    return yesterday
+
+def send_log(receiver):
+    log_path = os.path.join(BASE_DIR, 'app/DBexcel/log')
+    tomorrow = getYesterday()
+    log_file_path = os.path.join(log_path, tomorrow.strftime("%Y-%m-%d.log"))
+    with open(log_file_path, 'r') as f:
+        context = f.read()
+    subject = tomorrow.strftime("%Y-%m-%d") + ' - DBexcel日志文件'
+    send_mail(receiver, subject, context, 'plain')

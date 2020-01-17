@@ -1,0 +1,467 @@
+{% load static %}
+<div class="user yc">
+    <div class="row col-md-12">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active lng" data-name="UserManage" href="#" onclick="user();">用户管理</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link lng" href="#" data-name="CustomerManage" onclick="customer();">客户管理</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link lng" href="#" data-name="DepartmentManage" onclick="partment();">部门管理</a>
+            </li>
+        </ul>
+    </div>
+
+    <main role="main" class="col-md-12 col-lg-11 pt-3 px-4">
+        <div class = "useres">
+            <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+                <div class="row col-md-9">
+                    <a href="#" style="padding-bottom:10px;">
+                        <span data-toggle="modal" data-target="#add-user">
+                            <img alt="Add" src="{% static 'images/add.png' %}"> 添加用户
+                        </span>
+                    </a>
+                </div>
+                <div style="max-height:31px; margin-bottom:2px; float:left;">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link " href="javascript:void(0)" onclick="previous_user()" id="previous_u">Previous</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link active" href="javascript:void(0)" onclick="next_user()" id="next_u">Next</a>
+                        </li>
+                    </ul>
+                </div>
+                <div style="max-height:34px;margin-bottom:2px;float:right;">
+                    <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="user_setup">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th class="lng" data-name="Operate">操作</th>
+                                <th class="lng" data-name="StaffNumber">员工工号</th>
+                                <th calss="lng" data-name="StaffName">员工名称 </th>
+                                <th class="lng" data-name="StaffDepartment">员工部门</th>
+                                <th class="lng" data-name="StaffEmail">邮箱</th>
+                                <th class="lng" data-name="Level">角色</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-in-add">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="customer yc">
+            <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+                <div class="row col-md-9">
+                    <a href="#" style=" padding-bottom:10px;">
+                        <span data-toggle="modal" data-target="#add-customer">
+                            <img alt="Add" src="{% static 'images/add.png' %}"> 添加客户
+                        </span>
+                    </a>
+                </div>
+                <div style="max-height:31px; margin-bottom:2px; float:left;">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link " href="javascript:void(0)" onclick="previous_customer();" id="previous_cu">Previous</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link active" href="javascript:void(0)" onclick="next_customer();" id="next_cu">Next</a>
+                        </li>
+                    </ul>
+                </div>
+                <div style="max-height:34px;margin-bottom:2px;float:right;">
+                    <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="customer_setup">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                      <thead>
+                        <tr>
+                          <th>操作</th>
+                          <th>客户</th>
+                        </tr>
+                      </thead>
+                      <tbody id="customer-in-add">
+                            
+                      </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class = "partment yc">
+            <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+                <div class="row col-md-9">
+                    <a href="#" style=" padding-bottom:10px;">
+                        <span data-toggle="modal" data-target="#add-part">
+                            <img alt="Add" src="{% static 'images/add.png' %}"> 添加部门
+                        </span>
+                    </a>
+                </div>
+                <div style="max-height:31px; margin-bottom:2px; float:left;">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link " href="javascript:void(0)" onclick="previous_partname();" id="previous_p">Previous</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link active" href="javascript:void(0)" onclick="next_partname();" id="next_p">Next</a>
+                        </li>
+                    </ul>
+                </div>
+                <div style="max-height:34px;margin-bottom:2px;float:right;">
+                    <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="setup_partname">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+				<div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                      <thead>
+                        <tr>
+                          <th>操作</th>
+                          <th>部门</th>
+                        </tr>
+                      </thead>
+                      <tbody id="department-in-add">
+
+                      </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade" id="add-user" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">添加用户</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">工号</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" id="userNum"  >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">用户名</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" id="username" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">部门</label>
+                        <div class="col-md-8 has-feedback">
+                            <input id="department" type="text" class="form-control input_class" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">邮箱</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class Role" id="email" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">角色</label>
+                        <div class="col-md-8 has-feedback">
+                            <select class="form-control" id="Role" name="role">
+                                <option value="user">User</option>
+                                <option value="equipment_room">Equipment Room</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onClick="approval();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <div class="modal fade" id="add-customer" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">添加客户</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">客户</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" id="Customer_info_Add" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  
+                  <button type="button" class="btn btn-primary " data-dismiss="modal" onClick="Customer_add_button();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <div class="modal fade" id="add-part" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">添加部门</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">部门</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" id="add_department" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-primary "  data-dismiss="modal" onClick="more_department();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <div class="modal fade" id="modify-user" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">修改用户信息</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group row yc">
+                            <input type="text" class="form-control input_class" id="modifyId">
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">工号</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" readonly unselectable = "on" id="modifyNum">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">用户名</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" id="modifyName">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">部门</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class" id="modifyPart" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">邮箱</label>
+                        <div class="col-md-8 has-feedback">
+                            <input type="text" class="form-control input_class Role" readonly unselectable = "on" id="modifyEmail" >
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_note"  class="col-md-4 col-form-label">角色</label>
+                        <div class="col-md-8 has-feedback">
+                            <select class="form-control" id="modifyRole" name="role">
+                                <option value="user">User</option>
+                                <option value="equipment_room">Equipment Room</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onclick="modify_user();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <div class="modal fade" id="delete-user" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">删除用户</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group text-center">
+                        <p id="deluser"> </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onclick="del_user();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <div class="modal fade" id="modify-customer" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">修改客户</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group text-center">
+                        <div class="form-group row yc">
+                            <input type="text" class="form-control input_class" id="modifyCusId">
+                        </div>
+                        <div class="form-group row">
+                            <label for="input_note"  class="col-md-4 col-form-label">客户</label>
+                            <div class="col-md-8 has-feedback">
+                                <input type="text" class="form-control input_class" id="modifyCusName">
+                                <span class="help-block"></span>
+                                <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="modify_cus();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+    <div class="modal fade" id="delete-customer" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">删除客户</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group text-center">
+                        <p id="delCusName"> </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onclick="del_cus();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <div class="modal fade" id="modify-department" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">修改部门</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group text-center">
+                        <div class="form-group row yc">
+                            <input type="text" class="form-control input_class" id="modifyPartId">
+                        </div>
+                        <div class="form-group row">
+                            <label for="input_note"  class="col-md-4 col-form-label">部门</label>
+                            <div class="col-md-8 has-feedback">
+                                <input type="text" class="form-control input_class" id="modifyPartName">
+                                <span class="help-block"></span>
+                                <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onclick="modify_dep();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+    <div class="modal fade" id="delete-department" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+          <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">       
+                <h4 class="modal-title">删除部门</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="modal-body">
+                    <div class="form-group text-center">
+                        <p id="delPart"> </p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onclick="del_depart();">确认</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">关闭</button>
+                </div>
+              </form>
+            </div>
+          </div>
+    </div>
+</div>
+

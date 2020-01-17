@@ -1,0 +1,191 @@
+{% load static %}
+<div class="main_monitor yc">
+    <main role="main" class="col-md-12 col-lg-12 pt-3 px-4">
+        <div class="row col-md-12" style="border-bottom:1px solid #e5e9f2;">
+            <h3 class="lng" data-name="Maintenance">设备保养监控</h3>
+        </div>
+        <div class="row col-lg-12" style="padding:0.25rem 1rem;background-color: #e9ecef;border-radius: 0.25rem;">
+            <div class="col-lg-12 text-center">
+                <label>样本的时间阈:</label>
+                <span id="main_time"></span>
+                <label>数据样本总数:</label>
+                <span id="main_total"></span>
+            </div>            
+        </div>
+        <div class="row col-md-12">
+            <div id="maintain" style="min-height:400px;"class="col-lg-6"></div>
+            <div id="maintain_name"style="min-height:400px;display:inline-block;"class="col-lg-6"></div>
+        </div>
+        <div class="row col-md-12 text-left" style="padding-top:2px; padding-bottom:3px;border-top:1px solid #e5e9f2;">
+            <div class="row col-md-9">
+                <a href="#" style="padding-top:10px; padding-bottom:10px;padding-right:10px;">
+                    <span data-toggle="modal" data-target="#maintain_set" onclick="before_setup();">
+                        <img alt="Add" src="{% static 'images/setting.png' %}"> 设置
+                    </span>
+                </a>
+                <a href="#" style="padding-top:10px; padding-bottom:10px;padding-right:10px;">
+                    <span data-toggle="modal" data-target="#maintain_query" onclick="monitor_initial_page();">
+                        <img alt="Add" src="{% static 'images/filter.png' %}"> 筛选
+                    </span>
+                </a>
+                <a href="#" style="padding-top:10px; padding-bottom:10px;padding-right:10px;" onclick="maintain_file();">
+                    <img alt="Add" src="{% static 'images/export.gif' %}"> 下载
+                </a>
+            </div>
+            <div style="max-height:31px; margin-bottom:2px; float:left;">
+                <ul class="pagination">
+                    <li class="page-item">
+                        <a class="page-link " href="javascript:void(0)" onclick="Maintainer_previous();" id="mon_previous">Previous</a>
+                    </li>
+
+                    <li class="page-item">
+                        <a class="page-link active" href="javascript:void(0)" onclick="Maintainer_Next();" id="mon_next">Next</a>
+                    </li>
+                </ul>
+            </div>
+            <div style="max-height:34px;margin-bottom:2px;float:right;">
+                <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="setup_maintainer">
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="30">30</option>
+                    <option value="40">40</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div>
+        <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm" >
+                    <thead>
+                        <tr>
+                            <th>SN</th>
+                            <th>PartName</th>
+                            <th>保养周期(按次数)</th>
+                            <th>已使用次数</th>
+                            <th>保养周期(按时间)</th>
+                            <th>下次保养时间</th>
+                            <th>保养人</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="m_monitor">
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    <div class="modal" id="maintain_set" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">设备保养设置</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-5 col-form-label">保养次数提前预警比例</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="maintain_count">
+                                </div>
+                            </div>
+                        <div class="form-group row">
+                            <label for="input_note" class="col-md-5 col-form-label">保养时间提前预警比例</label>
+                            <div class="col-md-4 has-feedback">
+                                <input type="text" class="form-control input_class"  name="input_note" id="maintain_date">
+                            </div>
+                        </div>
+                            <div class="form-row">
+                                <label for="reminders" class="col-md-12 col-form-label">收件人</label>
+                                <select class="form-control selectpicker" multiple id="maintain_receiver">
+                                    <option value="Vicily_Wei">Vicily Wei</option>
+                                    <option value="Haojie_Ma">Haojie Ma</option>
+                                    <option value="Steven_X_Xu">Steven X Xu</option>
+                                    <option value="Tonvi_Chen">Tonvi Chen</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " onclick="setup_maintain();"data-dismiss="modal" aria-label="Close">确定</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal" aria-label="Close">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="maintain_query" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">筛选</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off" id="main_eq_data">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">开始时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="main_start_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">截止时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="main_end_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">SN</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="main_query_sn">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">品名</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="main_query_partname">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="reminders" class="col-md-4 col-form-label">保养人</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="main_query_user">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="reminders" class="col-md-4 col-form-label">状态</label>
+                                <div class="col-md-8 has-feedback">
+                                    <select class="form-control" name="role"  id="main_query_status">
+                                        <option> </option>
+                                        <option value="正常">正常</option>
+                                        <option value="预警">预警</option>
+                                        <option value="超标">超标</option>
+                                        <option value="未设定">未设定</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="main_m_query();">确定</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

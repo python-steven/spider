@@ -1,0 +1,14 @@
+2019-09-10 03:00:02,638 - manage - INFO - 2019-09-10
+2019-09-10 16:14:21,799 - manage - INFO - 2019-09-10
+2019-09-10 16:29:48,376 - manage - INFO - 2019-09-10
+2019-09-10 16:30:07,252 - manage - INFO - total 13286 rows
+2019-09-10 16:30:07,253 - manage - INFO - insert PartItemResult 70 rows
+2019-09-10 16:30:07,253 - manage - INFO - update PartItem 0 rows
+2019-09-10 16:30:07,253 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-10 16:30:37,238 - manage - INFO - 2019-09-10
+2019-09-10 16:31:30,031 - manage - INFO - total 8768 rows
+2019-09-10 16:31:30,031 - manage - INFO - insert PartItemResult 0 rows
+2019-09-10 16:31:30,032 - manage - INFO - update PartItem 3883 rows
+2019-09-10 16:31:30,032 - manage - INFO - insert PartItem 116 rows
+

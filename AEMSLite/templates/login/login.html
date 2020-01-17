@@ -1,0 +1,19 @@
+<!-- load header.html -->
+{% extends "common/header.html" %}
+<!-- rename page title -->
+{% block title%}Login{% endblock %}
+
+<!-- add page body content -->
+{% block body %}
+<form class="form-signin text-center" method="post">
+  {% csrf_token %}  
+    <div class="center-vertical">
+        <label for="userName" class="sr-only lng" data-name="nickName">User Name</label>
+        <input name="username" value="" type="text" id="userName" class="form-control" placeholder="EmployeeId/Email" required autofocus>
+        <label for="inputPassword" class="sr-only lng" data-name="password">Password</label>
+        <input name="password" value="" type="password" id="inputPassword" class="form-control" placeholder="Password" required>
+        <div style="height:35px"><a href="#" onclick="Retrieve_pwd();">Forget Password</a></div>
+        <button class="btn btn-lg btn-primary btn-block lng" type="button" data-name="title"  id="cli"  onClick="login_btn();">Login</button>
+    </div>
+</form>
+{% endblock %}

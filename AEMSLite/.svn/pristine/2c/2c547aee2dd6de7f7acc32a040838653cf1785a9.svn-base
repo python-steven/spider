@@ -1,0 +1,238 @@
+function maintain(){
+    $(".maintain").removeClass("yc")
+    $(".budget").addClass("yc")
+    $(".user").addClass("yc")
+    $(".budgetform").addClass("yc")
+    $(".merge").addClass("yc")
+    $(".detail").addClass("yc")
+    $(".ng").addClass("yc")
+    $(".statistic").addClass("yc")
+    $(".operation").addClass("yc")
+    $(".modifypwd").addClass("yc")
+
+
+    $.ajax({
+    'type':'GET',
+    'data':{},
+    'url':'/index/maintain-equipment-info/',
+     success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                $("#maintain_tr").empty();
+                maintain_data = result['data']
+//				visua(monitor_data.normal,monitor_data.warning,monitor_data.danger);
+                limit_data_count = maintain_data.limit_value1
+                limit_data_date = maintain_data.limit_value2
+                maintain_data =maintain_data.data
+
+                for(var i=0; i<maintain_data.length; i++){
+                    if(maintain_data[i].NextCheckDate == null){
+                        maintain_data[i].NextCheckDate ="0T"
+                    }
+                    maintain_data[i].NextCheckDate = (maintain_data[i].NextCheckDate).split("T")[0]
+                    var status
+                    var status_class
+                    if(limit_data_count.length == 0 && limit_data_date.length == 0){
+                        status = "正常"
+                        status_class = "badge badge-success";
+                    }
+                    if(limit_data_count.length != 0 && limit_data_date.length != 0){
+                        if(maintain_data[i].CheckCycleCount < limit_data_count[0].Max && maintain_data[i].CheckCycle < limit_data_date[0].Max ){
+                            status = "正常"
+                            status_class = "badge badge-success";
+                        }
+                        if(maintain_data[i].CheckCycleCount >= limit_data_count[0].Max || maintain_data[i].CheckCycle >= limit_data_date[0].Max){
+                            status = "预警"
+                            status_class = "badge badge-warning";
+                        }
+                        if(maintain_data[i].CheckCycleCount > limit_data_count[0].Max && maintain_data[i].CheckCycle > limit_data_date[0].Max ){
+                            status = "超标"
+                            status_class = "badge badge-danger";
+                        }
+                    }
+                    var maintain_add = "<tr>"
+                    +"<td class='yc'>"+maintain_data[i].Id+"</td>"
+                    +"<td><span data-toggle='modal' data-target='#maintain_sn' onclick='maintain_sn("+maintain_data[i].SN+")'>"
+                    +"<img alt='Add' src='/static/images/icon_modify.gif' style='padding-right:10px;'></span></td>"
+                    +"<td>"+maintain_data[i].SN+"</td>"
+                    +"<td>"+maintain_data[i].PartName+"</td>"
+                    +"<td>"+maintain_data[i].CheckCycleCount+"</td>"
+                    +"<td>"+maintain_data[i].UsedTimes+"</td>"
+                    +"<td>"+maintain_data[i].CheckCycle+"</td>"
+                    +"<td>"+maintain_data[i].NextCheckDate+"</td>"
+                    +"<td><span class='"+status_class+"'>"+status+"</span></td>"
+                    +"</tr>"
+
+                    $("#maintain_tr").append(maintain_add)
+                }
+
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+
+}
+//调用函数
+//function status(){
+////maintain_data,i,limit_data_count[0],limit_data_date[0]
+//    //按保养次数分
+////    main_c = maintain_data[i].NextCheckCount - maintain_data[i].UsedTimes
+////    main_stands_count = limit_data_count[0]
+////    main_stands_count = limit_data_date[0]
+////    if(main_c >  ){}
+//
+//}
+//var maintain_add = "<tr>"
+//                    +"<td class="yc">${maintain_data[i].Id}</td>"
+//                    +"<td><span data-toggle="modal" data-target="#maintain_sn" onclick="maintain_sn('${maintain_data[i].SN}')">"
+//                    +"<img alt="Add" src="/static/images/icon_modify.gif" style="padding-right:10px;"></span></td>"
+//                    +"<td>${maintain_data[i].SN}</td>"
+//                    +"<td>${maintain_data[i].PartName}</td>"
+//                    +"<td>${maintain_data[i].CheckCycleCount}</td>"
+//                    +"<td>${maintain_data[i].UsedTimes}</td>"
+//                    +"<td>${maintain_data[i].CheckCycle}</td>"
+//                    +"<td>${maintain_data[i].NextCheckDate}</td>"
+//                    +"<td><span class='${status_class}'>${status}</span></td>"
+//                    +"</tr>"
+
+//设置保养次数和保养周期时间
+function setup_maintain(){
+    var maintain_count = $("#maintain_count").val()
+    var maintain_date = $("#maintain_date").val()
+    var maintain_receiver = $("#maintain_receiver").val()
+    var Regx =  /^[A-Za-z]*$/;
+    if(maintain_count == ""){
+        window.message.showError("maintain count can't be empty")
+        return false;
+    }
+    if(Regx.test(maintain_count)){
+        window.message.showError("maintain count is digital")
+    }
+
+    if(maintain_date == ""){
+        window.message.showError("maintain date can't be empty")
+        return false;
+    }
+    if(Regx.test(maintain_date)){
+        window.message.showError("maintain date is digital")
+    }
+
+    if(maintain_receiver == ""){
+        window.message.showError("maintain mail receive can't be empty")
+        return false;
+    }
+    data = {
+        'maintain_count':maintain_count,
+        'maintain_date':maintain_date,
+        'maintain_receiver':maintain_receiver,
+    }
+    console.log(data)
+    $.ajax({
+    'type':'POST',
+    'data':data,
+    'url':'/index/maintain-equipment-info/',
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+//针对一个SN的进行设置修改保养的次数和周期 下次保养的时间设定
+function setup_restart(){
+    var main_count = $("#main_count").val()
+    var main_cycle = $("#main_cycle").val()
+    var main_date = $("#main_date").val()
+    var main_sn = $("#item_sn").text()
+    var Regx =  /^[0-9]*$/;
+    var Regx =  /^[0-9]*$/;
+    if(main_count =="" && main_cycle =="" && main_date ==""){
+        window.message.showError("can't be empty")
+        return false;
+    }
+    if(Regx.test(main_count) && Regx.test(main_cycle)){
+        data={
+        'main_count':main_count,
+        'main_cycle':main_cycle,
+        'main_date':main_date,
+        'main_sn':main_sn,
+        }
+        console.log(data)
+        $.ajax({
+        'type':'POST',
+        'data':data,
+        'url':'/index/maintain-setup-info/',
+            success:function(result){
+                if(result['code'] === 200){
+                    maintain();
+                    window.message.showSuccess(result['message'])
+                }else{
+                    window.message.showError(result['message'])
+                }
+            }
+        })
+
+    }else{
+        window.message.showError("main_count is digital")
+    }
+
+}
+////针对某一个BY_PN进行修改动作的设定参数
+function setup_by_PN(){
+    var main_partname = $("#setup_main_partname").val()
+    var main_count =    $("#setup_main_count").val()
+    var main_day =      $("#setup_main_day").val()
+    var main_date =     $("#setup_main_date").val()
+    var Regx =  /^[0-9]*$/;
+    if(main_count =="" && main_day =="" && main_date =="" && main_partname ==""){
+        window.message.showError("can't be empty")
+        return false;
+    }
+    if(Regx.test(main_count) && Regx.test(main_day)){
+        data={
+        'main_partname':main_partname,
+        'main_count':main_count,
+        'main_day':main_day,
+        'main_date':main_date,
+        }
+        console.log(data)
+        $.ajax({
+        'type':'POST',
+        'data':data,
+        'url':'/index/maintain-setup-by-pn/',
+            success:function(result){
+                if(result['code'] === 200){
+                    maintain();
+                    window.message.showSuccess(result['message'])
+                }else{
+                    window.message.showError(result['message'])
+                }
+            }
+        })
+
+    }else{
+        window.message.showError("main_count is digital")
+        return false;
+    }
+}
+//保养查询后
+function query_main(){
+    var sn =     $("#query_main_sn").val()
+    var pn =     $("#query_main_pn").val()
+    var status = $("#query_main_status").val()
+    var next_time =$("#query_main_next_time").val()
+
+    data={
+        'sn':sn,
+        'pn':pn,
+        'status':status,
+        'next_time':next_time,
+    }
+    console.log(data)
+}
+
+
+

@@ -1,0 +1,270 @@
+{% load static %}
+<div class="statistic yc">
+    <div class="row col-md-12 text-center" style="border-bottom:1px solid #e5e9f2;">
+        <h3>统计分析</h3>
+    </div>
+    <div class="row col-md-12" style="padding-top:15px;">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" onclick="picture();">图表</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link " href="#" onclick="number_tab();">数据</a>
+            </li>
+        </ul>
+    </div>
+    <div class = "chart_pic">
+        <main role="main" class="col-md-9 col-lg-11 pt-3 px-4">
+            <div class="row col-md-12 text-left">
+                <a href="#" style="padding-right:10px;">
+                    <span data-toggle="modal" data-target="#pic_set" onclick="add_modal_sa();">
+                        <img alt="Add" src="{% static 'images/setting.png' %}"> 设置
+                    </span>
+                </a>
+                <a href="#" style="padding-right:10px;">
+                    <span data-toggle="modal" data-target="#pic_query" onclick="query_data();">
+                        <img alt="Add" src="{% static 'images/filter.png' %}"> 筛选
+                    </span>
+                </a>
+            </div>
+        </main>
+        <div class="row col-lg-12">
+            <div id="onemain" style="min-height:280px;"class="col-lg-6"></div>
+            <div id="twomain"style="min-height:280px;display:inline-block;"class="col-lg-6"></div>
+        </div>
+        <div class="row col-lg-12">
+            <div id="threemain" style="min-height:280px;"class="col-lg-6"></div>
+            <div id="fourmain"style="min-height:280px;display:inline-block;"class="col-lg-6"></div>
+        </div>
+    </div>
+    <div class = "data_tab yc">
+        <main role="main" class="col-md-12 col-lg-12 pt-3 px-4">
+            <div class="row col-md-12 text-left" style="padding-top:2px;padding-bottom:3px;border-top:1px solid #e5e9f2;">
+                <div class="row col-md-9">
+                    <a href="#" style="padding-top:8px; padding-bottom:8px;padding-right:8px;">
+                        <span data-toggle="modal" data-target="#tab_query" onclick="query_table();">
+                            <img alt="Add" src="{% static 'images/filter.png' %}"> 筛选
+                        </span>
+                    </a>
+                </div>
+                <div style="max-height:31px; margin-bottom:2px; float:left;">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link " href="javascript:void(0)" onclick="previous_stat();" id="previous_statistic">Previous</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link active" href="javascript:void(0)" onclick="next_stat();" id="next_statistic">Next</a>
+                        </li>
+                    </ul>
+                </div>
+                <div style="max-height:34px;margin-bottom:2px;float:right;">
+                    <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="statistic_setup">
+                        <option value="5">5</option>
+                        <option id="install" value="10" selected>10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+                <div class="table-responsive ">
+                    <table class="table table-striped table-sm" >
+                        <thead>
+                            <tr>
+                              <th>USN</th>
+                              <th>SN</th>
+                              <th>OSN</th>
+                              <th>ASSET</th>
+                              <th>PN</th>
+                              <th>PARTNAME</th>
+                              <th>SPEC</th>
+                              <th>Used Times</th>
+                              <th>STAGE</th>
+                              <th>FIXTUREID</th>
+                              <th>RESULT</th>
+                              <th>ERRORCODE</th>
+                              <th>TRNDATE</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statistics_data">
+   
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div class="modal" id="pic_set" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Fail次数区间设置</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                {% csrf_token %}
+                <form class="form-horizontal" role="form" autocomplete="off" id="fail_range_form" method="POST">
+                    <div class="modal-body" id="input_sa">
+                        <input type="hidden" id="item_index" value ="0"/>
+                        <div class="form-group row" >
+							<span class="col-md-2 col-form-label" onclick="add_input();"><img alt="Add" src="/static/images/add.png">Add</span>
+						</div>
+                        <div class="form-group row" id="input_analysis_data">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="add_sa();">确定</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="pic_query" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog modal-lg" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>筛选</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off">
+                    <div class="modal-body">
+                        <div class="row clearfix">
+                            <div class="col-md-4 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header text-center" >
+                                    <div class="col-md-6" style="display:inline-block;padding-left:0px;padding-right:0px">
+                                        <span>StartTime</span>
+                                    </div>
+                                    <div class="col-md-6" style="display:inline-block;float:right;padding-left:0px;padding-right:0px">
+                                        <span>EndTime</span>
+                                    </div>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <div class="col-md-6" style="display:inline-block;padding-left:0px;padding-right:0px">
+                                        <input type="text" class="form-control" id="min">
+                                    </div>
+                                    <div class="col-md-6" style="display:inline-block;float:right;padding-left:0px;padding-right:0px">
+                                        <input type="text" class="form-control" id="max">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>STAGE</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control" id="statistics_query_stage">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>FIXTUREID</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control" id="statistics_query_fixture">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>USN</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control" id="statistics_query_usn">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="query_info_data();">确认</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="tab_query" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog modal-lg" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>筛选</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off">
+                    <div class="modal-body">
+                        <div class="row clearfix">
+                            <div class="col-md-4 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header text-center" >
+                                    <div class="col-md-6" style="display:inline-block;padding-left:0px;padding-right:0px">
+                                        <span>StartTime</span>
+                                    </div>
+                                    <div class="col-md-6" style="display:inline-block;float:right;padding-left:0px;padding-right:0px">
+                                        <span>EndTime</span>
+                                    </div>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <div class="col-md-6" style="display:inline-block;padding-left:0px;padding-right:0px">
+                                        <input type="text" class="form-control" id="tab_min">
+                                    </div>
+                                    <div class="col-md-6" style="display:inline-block;float:right;padding-left:0px;padding-right:0px">
+                                        <input type="text" class="form-control" id="tab_max">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>STAGE</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control" id="tab_stage">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>FIXTUREID</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control"  id="tab_fixture">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>USN</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control" id="tab_usn">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2 column card" style="padding-left:0px;padding-right:0px">
+                                <div class="card-header">
+                                    <span>RESULT</span>
+                                </div>
+                                <div class="card-body" style="padding:0px">
+                                    <select class="form-control"  id="tab_result">
+                                        <option>All</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="tab_query_select();">确认</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

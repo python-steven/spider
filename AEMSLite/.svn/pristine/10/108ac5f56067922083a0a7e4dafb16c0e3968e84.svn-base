@@ -1,0 +1,32 @@
+<!DOCTYPE HTML>
+<html >
+
+<head>
+    <!-- load common meta html -->
+    {% include "common/meta.html" %}
+    <!-- define title for page -->
+    <title>{% block title %}{% endblock %}</title>
+    {% load static %}
+    <!-- load common script html -->
+    {% include "common/script.html" %}
+    <!-- load common css html -->
+    {% include "common/css.html" %}
+    <!-- define style for page -->
+    {% block style %}{% endblock %}
+    <!-- define script function for page -->
+    {% block script %}{% endblock %}
+    <script  type="text/javascript" charset="utf-8">
+        $.ajaxSetup({
+            data: {csrfmiddlewaretoken: '{{ csrf_token }}' }
+        })
+    </script>
+</head>
+
+<body style="padding:0px;">
+    <!--load common narbar html -->
+    {% include "common/narbar.html" %}
+    <!-- define body for page -->
+    {% block body %}{% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,213 @@
+<div class="budgetform yc">
+    <div style="padding-top:5px;padding-bottom:20px;">
+        <span class="col-md-12">
+        <a href="#" onclick="rebudget();">预算编码单申请</a>&nbsp;>&nbsp;填写预算编码申请单</span>
+    </div>
+    <main role="main" class="col-md-12 ml-sm-auto col-lg-12 pt-3 px-4">
+        <div class="container">
+            <div class="row col-md-12 text-center" style="border-bottom:1px solid #e5e9f2;">
+                <h4>填写预算编码申请单</h4>
+            </div>
+            <div class=" col-md-12 text-left" style="padding-top:20px;padding-bottom:30px;margin:0 auto">
+                <form id="submit_form">
+                    {% csrf_token %}
+                    <input type="text" class="yc" id="budgetId" name="bud_id">
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">申请部门<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class" id="depart_selector" name="Department" ></select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">備註/新增或損耗<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class" id="Remark" name="Remark">
+                                <option value="新增需求">新增需求</option>
+                                <option value="損耗備品">損耗備品</option>
+                                <option value="損耗需求">損耗需求</option>
+                             </select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label ">单号类型<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class" id="bud_num_type" name="bud_num_type">
+                                <option value="1">PMCS单号</option>
+                                <option value="2">201单号</option>
+                             </select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">单号</label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class text-muted" id="bud_num" name="bud_num">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row" >
+                        <label for="input_dept" class="col-md-2 col-form-label">单号签核日期</label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="datepicker1" name="bud_time">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label" >PIC<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="bud_principal" name="bud_principal" onchange="my_principal(this);"placeholder="UserName">
+                            <!--<select id="words" class="form-control" style="display:none;position:absolute;z-index:1;">-->
+                                <!--<option>A</option>-->
+                                <!--<option>B</option>-->
+                                <!--<option>C</option>-->
+                                <!--<option>D</option>-->
+                                <!--<option>E</option>-->
+                                <!--<option>F</option>-->
+                                <!--<option>G</option>-->
+                            <!--</select> -->
+                             <!--<select class="form-control " data-edit-select="1" id="bud_principal" onmousedown="if(this.options.length>3){this.size=8}" onblur="this.size=0" onchange="this.size=0" style="position:absolute;z-index:1;">-->
+                                <!--<option selected></option>-->
+                                <!--<option>一</option>-->
+                                <!--<option>二</option>-->
+                                <!--<option>三</option>-->
+                                <!--<option>四</option>-->
+                                <!--<option>五</option>-->
+                                <!--<option>六</option>-->
+                                <!--<option>七</option>-->
+                                <!--<option>八</option>-->
+                                <!--<option>九</option>-->
+                                <!--<option>十</option>-->
+                            <!--</select>-->
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">設備名稱/治具類型<span class="text-danger">*</span></label>
+                        <div class="col-md-10 has-feedback">
+                            <input type="text" class="form-control input_class" id="bud_machine_name" name="bud_machine_name">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">規格/型號/版本<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="bud_machine_type" name="bud_machine_type">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">類別<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class" name="bud_request_type" id="budget_type">
+                                <option value="折旧摊提">折旧摊提</option>
+                                <option value="杂购">杂购</option>
+                             </select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">單價<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="p_price"  name="bud_price" onkeyup="count()">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">申請數量<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="p_qty" name="bud_qty" onkeyup="count()">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">單位<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class"  name="bud_qty_type" id="bud_qty_type">
+                                <option>PCS</option> 
+                                <option>个</option> 
+                             </select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">總費用</label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="count_fee" name="bud_total_price" disabled>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">當月發生費用(K)</label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="month_fee" name="bud_month_price" disabled>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">币别<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class"  name="bud_money_type" id="moneys">
+                                <option value="RMB">RMB</option>
+                                <option value="USD">USD</option>
+                             </select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">客戶<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <select class="form-control input_class" id="customer_selector" name="bud_customer">
+                             </select>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">機種</label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="bud_mach_type" name="bud_mach_type">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">ProjectCode</label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="bud_project_code" name="bud_project_code">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                        <label for="input_note" class="col-md-2 col-form-label">签核人<span class="text-danger">*</span></label>
+                        <div class="col-md-4 has-feedback">
+                            <input type="text" class="form-control input_class" id="bud_user" name="bud_user" onchange="my_user(this);"placeholder="UserName">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">评估报告</label>
+                        <div class="col-md-10 has-feedback" >
+                            <input type="file"  name="upload_file" class="form-control input_class">
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="input_dept" class="col-md-2 col-form-label">申請原因/用途<span class="text-danger">*</span></label>
+                        <div class="col-md-10 has-feedback">
+                            <textarea rows="3" placeholder="" class="form-control" id="bud_reason" name="bud_reason"></textarea>
+                            <span class="help-block"></span>
+                            <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class=" col-md-12 text-center" >
+                <button type="button" class="btn btn-default" id="save_btn" onclick="save_budget_code();">保存</button>
+                <button type="button" class="btn btn-default" id="submit_btn" onclick="sub_budget_code();">提交</button>
+                <button type="button" class="btn btn-default" id="cancel_btn" onclick="re_budget();">取消</button>
+            </div>
+        </div>
+    </main>
+</div>

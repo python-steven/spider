@@ -1,0 +1,266 @@
+//数据显示部分的data
+function chart_tab(){
+    $(".statistic").removeClass("yc")
+    $(".budget").addClass("yc")
+    $(".user").addClass("yc")
+    $(".budgetform").addClass("yc")
+    $(".merge").addClass("yc")
+    $(".detail").addClass("yc")
+    $(".ng").addClass("yc")
+    $(".maintain").addClass("yc")
+    $(".operation").addClass("yc")
+    $(".modifypwd").addClass("yc")
+    $.ajax({
+    'type':'GET',
+    'data':{},
+    'url':'/analysis/analysis-equipment-info/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                num1=result['data'].user
+                num2=result['data'].filterSN
+                visua_pic(num1,num2)
+                num=result['data'].errorcode
+                ErrorCode(num)
+                num3=result['data'].Partname
+                pic_partname (num3)
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+//后台获取我的设置的数据的函数
+function add_modal_sa(){
+    $.ajax({
+        'type':'GET',
+        'data':{},
+        'url':'/analysis/analysis-setup-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                data = result['data']
+                $("#pic_set").modal("show")
+                if(data.length >0){
+                   for(var i=0; i<data.length; i++){
+                       add_html = '<div class="form-group row" id="'+ ${data.Id} +'">'
+                       add_html += '<span class="col-md-2 col-form-label" onclick="delete_input("'+${data.Id}_div+'");">'
+                       add_html += '<img alt="Delete" src="/static/images/icon_del.gif">'
+                       add_html += '</span>'
+                       add_html += '<label class="col-md-1 col-form-label" style="padding-right:0px">Min</label>'
+                       add_html += '<div class="col-md-4 has-feedback">'
+                       add_html += '<input type="text" class="form-control input_class" name="range_min['+${data.Id}+']" value="'+${data.Min}+'">'
+                       add_html += '</div>'
+                       add_html += '<label class="col-md-1 col-form-label" style="padding-right:0px">Max</label>'
+                       add_html += '<div class="col-md-4 has-feedback">'
+                       add_html += '<input type="text" class="form-control input_class" name="range_min['+${data.Id}+']" value="'+${data.Max}+'">'
+                       add_html += '</div>'
+                       add_html += '</div>'
+                       
+                       $("#input_sa").append(add_html)
+                   }
+                }
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+//增加输入框的动作
+function add_input(){
+    var range_id = 'temp_range_' + $("#item_index").val();
+    var range_div = range_id + '_div';
+    var div_name;
+
+    temp_range = "<div class=\"form-group row\" id=\""+ range_div +"\">";
+    temp_range += '<span class="col-md-2 col-form-label" onclick="delete_input("' + range_div + '");"><img alt="Delete" src="/static/images/icon_del.gif"></span>';
+    temp_range += "<label class=\"col-md-1 col-form-label\" style=\"padding-right:0px\">Min</label>";
+    temp_range += "<div class=\"col-md-4 has-feedback\">";
+    temp_range += "<input type=\"text\" class=\"form-control input_class\" name=\"range_min[" + range_id + "]\"></div>";
+    temp_range += "<label class=\"col-md-1 col-form-label\" style=\"padding-right:0px\">Max</label>";
+    temp_range += "<div class=\"col-md-4 has-feedback\">";
+    temp_range += "<input type=\"text\" class=\"form-control input_class\" name=\"range_max[" + range_id + "]\"></div>";
+    
+    $('#input_sa').append(temp_range);
+    $("#item_index").val(parseInt($("#item_index").val(),10)+1);
+}
+//删除输入框的动作
+function delete_input(div_id){
+    if(confirm('Are you sure to delete?'))
+		$('#' + div_id).remove();
+
+}
+
+//设置fail区间的值得提交
+function add_sa(){
+    $('#fail_range_form').attr("action", "/analysis/analysis-setup-value/").submit();
+}
+
+
+//获取查询数据的get的数据
+function query_data(){
+    $.ajax({
+        'type':'GET',
+        'data':{},
+        'url':'/analysis/analysis-query-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                data =result['data']
+                stage_data =data.stage
+                $("#statistics_query_stage").empty()
+                $("#statistics_query_stage").append('<option>All</option>')
+                $("#statistics_query_fixture").empty()
+                $("#statistics_query_fixture").append('<option>All</option>')
+                $("#statistics_query_usn").empty()
+                $("#statistics_query_usn").append('<option>All</option>')
+                for(var i=0; i<stage_data.length; i++){
+                    var html_query='<option>'+stage_data[i].Stage+'</option>'
+                    $("#statistics_query_stage").append(html_query)}
+                USN_data = data.USN
+                for(var j=0; j<USN_data.length; j++){
+                    var html_query_usn='<option>'+USN_data[j].USN+'</option>'
+                    $("#statistics_query_usn").append(html_query_usn)}
+                fixture_data =data.fixtureId
+                for(var k=0; k<fixture_data.length; k++){
+                    var html_query_fixture='<option>'+fixture_data[k].FixtureId+'</option>'
+                    $("#statistics_query_fixture").append(html_query_fixture)}
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+//查询数据的post 提交数据的查询
+function query_info_data(){
+    var stage = $("#statistics_query_stage").val()
+    var fixture = $("#statistics_query_fixture").val()
+    var usn = $("#statistics_query_usn").val()
+    var begin = $("#min").val()
+    var end = $("#max").val()
+    var startTime = new Date(Date.parse(begin));
+    var endTime = new Date(Date.parse(end));
+    if(startTime>endTime){
+       window.message.showError("startTime can't > endTime")
+       return false;
+    }
+    if(begin == end && begin !="" && end !=""){
+        end=end+' 23:59:59';
+    }
+    if(stage == "All"){
+        stage =""
+    }
+    if(fixture == "All"){
+        fixture =""
+    }
+    if(usn == "All"){
+        usn =""
+    }
+    data ={
+        'begin':begin,
+        'end':end,
+        'stage':stage,
+        'fixture':fixture,
+        'usn':usn,
+    }
+    console.log(data)
+    $.ajax({
+        'type':'POST',
+        'data':data,
+        'url':'/analysis/analysis-query-info/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+
+
+//数据显示部分
+function number_tab(){
+    $(".data_tab").removeClass("yc")
+    $(".chart_pic").addClass("yc")
+    $.ajax({
+    'type':'GET',
+    'data':{},
+    'url':'/analysis/analysis-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                statistics_data = result['data']
+                $("#statistics_data").empty()
+                for(var i=0; i<statistics_data.length; i++){
+                    statistics_data[i].TrnDate = (statistics_data[i].TrnDate).split("T")[0]
+                    if(statistics_data[i].Asset == null){statistics_data[i].Asset = '';}
+                    var statistics_data_add = '<tr>'
+                        +'<td class="yc">'+statistics_data[i].Id+'</td>'
+                        +'<td>'+statistics_data[i].USN+'</td>'
+                        +'<td>'+statistics_data[i].SN+'</td>'
+                        +'<td>'+statistics_data[i].OSN+'</td>'
+                        +'<td>'+statistics_data[i].Asset+'</td>'
+                        +'<td>'+statistics_data[i].PN+'</td>'
+                        +'<td>'+statistics_data[i].PartName+'</td>'
+                        +'<td>'+statistics_data[i].Spec+'</td>'
+                        +'<td>'+statistics_data[i].UsedTimes+'</td>'
+                        +'<td>'+statistics_data[i].Stage+'</td>'
+                        +'<td>'+statistics_data[i].FixtureId+'</td>'
+                        +'<td>'+statistics_data[i].Result+'</td>'
+                        +'<td>'+statistics_data[i].ErrorCode+'</td>'
+                        +'<td>'+statistics_data[i].TrnDate+'</td>'
+                    +'</tr>'
+                    $("#statistics_data").append(statistics_data_add)
+                }
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+
+//数据后台获取的数据函数
+function query_table(){
+    $.ajax({
+        'type':'GET',
+        'data':{},
+        'url':'/analysis/analysis-tab-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+//                data =result['data']
+//                stage_data =data.stage
+//                $("#statistics_query_stage").empty()
+//                $("#statistics_query_stage").append('<option>All</option>')
+//                $("#statistics_query_fixture").empty()
+//                $("#statistics_query_fixture").append('<option>All</option>')
+//                $("#statistics_query_usn").empty()
+//                $("#statistics_query_usn").append('<option>All</option>')
+//                for(var i=0; i<stage_data.length; i++){
+//                    var html_query='<option>'+stage_data[i].Stage+'</option>'
+//                    $("#statistics_query_stage").append(html_query)}
+//                USN_data = data.USN
+//                for(var j=0; j<USN_data.length; j++){
+//                    var html_query_usn='<option>'+USN_data[j].USN+'</option>'
+//                    $("#statistics_query_usn").append(html_query_usn)}
+//                fixture_data =data.fixtureId
+//                for(var k=0; k<fixture_data.length; k++){
+//                    var html_query_fixture='<option>'+fixture_data[k].FixtureId+'</option>'
+//                    $("#statistics_query_fixture").append(html_query_fixture)}
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+
+
+}
+
+//查询数据的post提交的数据的查询
+function tab_query_select(){}

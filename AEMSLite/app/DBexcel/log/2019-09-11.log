@@ -1,0 +1,124 @@
+2019-09-11 03:00:04,073 - manage - INFO - 2019-09-11
+2019-09-11 10:56:47,969 - manage - INFO - 2019-09-11
+2019-09-11 10:58:31,434 - manage - INFO - 2019-09-11
+2019-09-11 10:58:50,816 - manage - INFO - total 13286 rows
+2019-09-11 10:58:50,817 - manage - INFO - insert PartItemResult 70 rows
+2019-09-11 10:58:50,817 - manage - INFO - update PartItem 0 rows
+2019-09-11 10:58:50,817 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 11:02:57,025 - manage - INFO - 2019-09-11
+2019-09-11 11:03:49,061 - manage - INFO - total 8768 rows
+2019-09-11 11:03:49,061 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 11:03:49,061 - manage - INFO - update PartItem 3917 rows
+2019-09-11 11:03:49,061 - manage - INFO - insert PartItem 116 rows
+
+2019-09-11 11:13:21,469 - manage - INFO - 2019-09-11
+2019-09-11 11:13:40,782 - manage - INFO - total 13286 rows
+2019-09-11 11:13:40,782 - manage - INFO - insert PartItemResult 70 rows
+2019-09-11 11:13:40,782 - manage - INFO - update PartItem 0 rows
+2019-09-11 11:13:40,782 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 11:14:29,684 - manage - INFO - 2019-09-11
+2019-09-11 11:15:58,584 - manage - INFO - total 8768 rows
+2019-09-11 11:15:58,584 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 11:15:58,584 - manage - INFO - update PartItem 8346 rows
+2019-09-11 11:15:58,585 - manage - INFO - insert PartItem 116 rows
+
+2019-09-11 11:16:19,735 - manage - INFO - 2019-09-11
+2019-09-11 11:17:50,598 - manage - INFO - total 8458 rows
+2019-09-11 11:17:50,599 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 11:17:50,599 - manage - INFO - update PartItem 8434 rows
+2019-09-11 11:17:50,599 - manage - INFO - insert PartItem 15 rows
+
+2019-09-11 11:48:27,427 - manage - INFO - 2019-09-11
+2019-09-11 11:56:51,501 - manage - INFO - 2019-09-11
+2019-09-11 11:56:54,666 - manage - ERROR - 插入PartItem失败，异常信息: None : name '_' is not defined
+2019-09-11 11:56:54,667 - manage - INFO - total 13286 rows
+2019-09-11 11:56:54,667 - manage - INFO - insert PartItemResult 8 rows
+2019-09-11 11:56:54,667 - manage - INFO - update PartItem 0 rows
+2019-09-11 11:56:54,667 - manage - INFO - insert PartItem 0 rows
+
+2019-09-11 11:57:43,952 - manage - INFO - 2019-09-11
+2019-09-11 12:00:10,646 - manage - INFO - 2019-09-11
+2019-09-11 12:00:30,478 - manage - INFO - total 13286 rows
+2019-09-11 12:00:30,479 - manage - INFO - insert PartItemResult 8 rows
+2019-09-11 12:00:30,479 - manage - INFO - update PartItem 0 rows
+2019-09-11 12:00:30,480 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 14:33:29,146 - manage - INFO - 2019-09-11
+2019-09-11 14:33:48,258 - manage - INFO - total 13286 rows
+2019-09-11 14:33:48,259 - manage - INFO - insert PartItemResult 70 rows
+2019-09-11 14:33:48,259 - manage - INFO - update PartItem 0 rows
+2019-09-11 14:33:48,259 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 14:36:10,080 - manage - INFO - 2019-09-11
+2019-09-11 14:37:38,963 - manage - INFO - total 8768 rows
+2019-09-11 14:37:38,963 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 14:37:38,963 - manage - INFO - update PartItem 8346 rows
+2019-09-11 14:37:38,963 - manage - INFO - insert PartItem 116 rows
+
+2019-09-11 14:46:51,839 - manage - INFO - 2019-09-11
+2019-09-11 14:47:10,925 - manage - INFO - total 13286 rows
+2019-09-11 14:47:10,925 - manage - INFO - insert PartItemResult 70 rows
+2019-09-11 14:47:10,925 - manage - INFO - update PartItem 0 rows
+2019-09-11 14:47:10,925 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 15:01:07,660 - manage - INFO - 2019-09-11
+2019-09-11 15:01:26,964 - manage - INFO - total 13286 rows
+2019-09-11 15:01:26,964 - manage - INFO - insert PartItemResult 70 rows
+2019-09-11 15:01:26,964 - manage - INFO - update PartItem 0 rows
+2019-09-11 15:01:26,964 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 15:05:02,463 - manage - INFO - 2019-09-11
+2019-09-11 15:05:44,898 - manage - INFO - total 13286 rows
+2019-09-11 15:05:44,898 - manage - INFO - insert PartItemResult 8 rows
+2019-09-11 15:05:44,899 - manage - INFO - update PartItem 1844 rows
+2019-09-11 15:05:44,899 - manage - INFO - insert PartItem 0 rows
+
+2019-09-11 15:11:26,069 - manage - INFO - 2019-09-11
+2019-09-11 15:11:26,094 - manage - INFO - total 1 rows
+2019-09-11 15:11:26,094 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 15:11:26,095 - manage - INFO - update PartItem 1 rows
+2019-09-11 15:11:26,095 - manage - INFO - insert PartItem 0 rows
+
+2019-09-11 15:12:16,410 - manage - INFO - 2019-09-11
+2019-09-11 15:12:16,467 - manage - INFO - total 1 rows
+2019-09-11 15:12:16,467 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 15:12:16,467 - manage - INFO - update PartItem 1 rows
+2019-09-11 15:12:16,467 - manage - INFO - insert PartItem 0 rows
+
+2019-09-11 16:54:14,563 - manage - INFO - 2019-09-11
+2019-09-11 16:54:14,563 - manage - INFO - 开始处理文件：/home/AEMSLite/AEMSLite/app/DBexcel/pending/F136_20190906.xlsx
+2019-09-11 16:54:33,537 - manage - INFO - total 13286 rows
+2019-09-11 16:54:33,537 - manage - INFO - insert PartItemResult 70 rows
+2019-09-11 16:54:33,537 - manage - INFO - update PartItem 0 rows
+2019-09-11 16:54:33,537 - manage - INFO - insert PartItem 1844 rows
+
+2019-09-11 16:54:46,827 - manage - INFO - 2019-09-11
+2019-09-11 16:54:46,828 - manage - INFO - 开始处理文件：/home/AEMSLite/AEMSLite/app/DBexcel/pending/test.xlsx
+2019-09-11 16:54:46,846 - manage - INFO - total 1 rows
+2019-09-11 16:54:46,846 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 16:54:46,846 - manage - INFO - update PartItem 0 rows
+2019-09-11 16:54:46,846 - manage - INFO - insert PartItem 0 rows
+
+2019-09-11 16:55:06,418 - manage - INFO - 2019-09-11
+2019-09-11 16:55:06,418 - manage - INFO - 开始处理文件：/home/AEMSLite/AEMSLite/app/DBexcel/pending/F136_20190907.xlsx
+2019-09-11 16:56:34,144 - manage - INFO - total 8768 rows
+2019-09-11 16:56:34,145 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 16:56:34,145 - manage - INFO - update PartItem 8346 rows
+2019-09-11 16:56:34,145 - manage - INFO - insert PartItem 116 rows
+
+2019-09-11 16:56:34,145 - manage - INFO - 开始处理文件：/home/AEMSLite/AEMSLite/app/DBexcel/pending/F136_20190908.xlsx
+2019-09-11 16:58:03,338 - manage - INFO - total 17226 rows
+2019-09-11 16:58:03,338 - manage - INFO - insert PartItemResult 0 rows
+2019-09-11 16:58:03,338 - manage - INFO - update PartItem 16780 rows
+2019-09-11 16:58:03,338 - manage - INFO - insert PartItem 131 rows
+
+2019-09-11 17:01:28,556 - manage - INFO - 2019-09-11
+2019-09-11 17:01:28,557 - manage - INFO - 开始处理文件：/home/AEMSLite/AEMSLite/app/DBexcel/pending/F136_20190904.xlsx
+2019-09-11 17:03:43,463 - manage - INFO - total 13115 rows
+2019-09-11 17:03:43,463 - manage - INFO - insert PartItemResult 15 rows
+2019-09-11 17:03:43,463 - manage - INFO - update PartItem 12828 rows
+2019-09-11 17:03:43,463 - manage - INFO - insert PartItem 76 rows
+
+2019-09-11 17:03:43,463 - manage - INFO - spent 134 s

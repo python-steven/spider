@@ -1,0 +1,29 @@
+{% load static %}
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="{% static 'jquery-ui/external/jquery-3.1.0/jquery.js' %}"></script>
+<script src="{% static 'js/jquery-ui.js' %}"></script>
+<script src="{% static 'js/popper.js' %}"></script>
+<script src="{% static 'js/bootstrap-select.min.js' %}"></script>
+<script src="{% static 'js/bluebird.js' %}"></script>
+<script src="{% static 'js/jquery.cookie.js' %}"></script>  
+<script src="{% static 'js/language.js' %}"></script>
+<script src="{% static 'jquery.mask/mask.js' %}"></script>  
+<!-- Bootstrap core JavaScript -->
+<script src="{% static 'bootstrap/dist/js/bootstrap.min.js' %}"></script>
+
+<!-- common js -->
+<script src="{% static 'js/common.js' %}"></script>
+
+<!-- JavaScript -->
+<script src="{% static 'js/echarts.min.js' %}"></script>
+<script src="{% static 'js/budget_code.js' %}"></script>
+<script src="{% static 'js/message.js' %}"></script>
+<script src="{% static 'js/userdata.js' %}"></script>
+<script src="{% static 'js/manage.js' %}"></script>
+<script src="{% static 'js/login/login.js' %}"></script>
+<script src="{% static 'js/monitor_equipment.js' %}"></script>
+<script src="{% static 'js/analysis.js' %}"></script>
+<script src="{% static 'js/maintain.js' %}"></script>
+<script src="{% static 'js/aemslite.js' %}"></script>
+<script src="{% static 'js/maintain_monitor.js' %}"></script>
+

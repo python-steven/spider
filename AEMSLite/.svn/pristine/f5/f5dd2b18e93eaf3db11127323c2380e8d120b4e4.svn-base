@@ -1,0 +1,449 @@
+from django.shortcuts import render
+from django.shortcuts import render, redirect
+# from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from app.login.models import User,Department,Customer,BudgetCodeForm,PartItem,PartItemResult,MaintenanceLog,Configuration
+from app.login.views import Update_User_IsActivated
+from django.views.generic.base import View
+from django.db import connection
+from django.http import HttpResponseRedirect,HttpResponse
+from app import restful,mail
+from datetime import datetime,timedelta,date
+from django.conf import settings
+import random
+import string
+import os
+import pytz
+import time
+import xlrd
+from openpyxl import load_workbook,Workbook
+import json
+UpdatedTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+#进入保养页面的获取数据以及设置保养次数和天数
+class maintain_equipment_info(View):
+    @csrf_exempt
+    def get(self,request):
+        try:
+            page = int(request.GET.get('page'))
+            number = request.GET.get('num')
+            #这里是获取近一周的数据，但是由于数据没有更新，所以捞取全部当前300天的数据，后面进行修改天数
+            end_time = datetime.now()
+            delta = timedelta(days=300)
+            start_time = end_time-delta
+            dict_data={}
+            count = PartItem.objects.order_by("Id").filter(TrnDate__range=(start_time, end_time)).count()
+            if number == "All":
+                data = PartItem.objects.order_by("Id").filter(TrnDate__range=(start_time, end_time))
+                data = list(data.values())
+                dict_data['data'] = data
+                dict_data['page_count'] = count
+                return restful.ok(data=dict_data)
+            if number != "All":
+                number = int(number)
+                page_num = count // number  # 总共多少页
+                if count % number > 0:
+                    page_num = page_num + 1
+                if page_num >= page:
+                    data = PartItem.objects.order_by("Id").filter(TrnDate__range=(start_time, end_time))[
+                                   (page - 1) * number:number * page]
+                    data = list(data.values())
+                    dict_data['data'] = data
+                    dict_data['page_count'] = page_num
+                    return restful.ok(data=dict_data)
+                else:
+                    return restful.params_error(message='it had no others page')
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#单独的SN的保养更改
+@csrf_exempt
+def maintain_setup_info(request):
+    if request.method == "POST":
+        try:
+            main_count = request.POST['main_count']
+            main_cycle = request.POST['main_cycle']
+            main_date = request.POST['main_date']
+            main_sn = request.POST['main_sn']
+            main_user = request.POST['main_user']
+            PartItem.objects.filter(SN=main_sn).update(CheckCycleCount=main_count,CheckCycle=main_cycle,NextCheckDate=main_date,Maintainer=main_user)
+            return restful.ok(message="maintain modify success")
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#查询数据的函数
+@csrf_exempt
+def maintain_query_part_name_data(request):
+    if request.method == "POST":
+        try:
+            page = int(request.POST.get('page'))
+            number = request.POST.get('num')
+            start_time = request.POST['main_start_time']
+            end_t = request.POST['main_end_time']
+            SN = str(request.POST['main_sn'])
+            Part_name = str(request.POST['main_partname'])
+            main_user = str(request.POST['main_user'])
+            # Status = request.POST['main_status']
+            # end_time = datetime.now()
+            # current_time = end_time.strftime('%Y-%m-%d')
+            # count = Configuration.objects.get(Type="mt_count")
+            # date = Configuration.objects.get(Type="mt_date")
+            # date = int(date.Max)
+            # delta = timedelta(date)
+            # check_time = end_time + delta
+            # count = str(int(count.Max))
+            # limit_value1 = list(Configuration.objects.filter(Type="mt_count").values("Max", "Id"))
+            # limit_value2 = list(Configuration.objects.filter(Type="mt_date").values("Max", "Id"))
+            sql = 'SELECT "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate","Maintainer" FROM "PartItem" where 1=1 '
+            sql_count ='select count(*) from "PartItem" where 1=1'
+            # visual_sql = 'SELECT "PartName", COUNT("PartName") FROM "PartItem" where 1=1 '
+            dict_data = {}
+            if start_time !="":
+                sql = sql+' AND "TrnDate" >=\'%{0}%\''.format(start_time)
+                sql_count = sql_count+' AND "TrnDate" >=\'%{0}%\''.format(start_time)
+            if end_t !="":
+                sql = sql+' AND "TrnDate" <=\'%{0}%\''.format(end_t)
+                sql_count = sql_count+' AND "TrnDate" <=\'%{0}%\''.format(end_t)
+            if SN !="":
+                sql = sql+' AND "SN" =\'' + SN + '\''
+                sql_count = sql_count+' AND "SN" =\'' + SN + '\''
+            if Part_name !="":
+                sql = sql+' AND "PartName" =\'' + Part_name + '\''
+                sql_count = sql_count+' AND "PartName" =\'' + Part_name + '\''
+            if main_user != "":
+                sql = sql + ' AND "Maintainer" =\'' + main_user + '\''
+                sql_count = sql_count+' AND "Maintainer" =\'' + main_user + '\''
+            cur = connection.cursor()
+            cur.execute(sql_count)
+            count = cur.fetchall()  # 获取赛选的条件的总数值
+            if number == "All":
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                dict_data['data'] = data
+                dict_data['page_count'] = count[0][0]
+                return restful.ok(data=dict_data)
+            if number != "All":
+                number = int(number)
+                count_page = count[0][0] // number  # 总数除以一页显示多少条，得到总的页数
+                if count[0][0] % number > 0:
+                    count_page += 1
+                if page <= count_page:
+                    sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str(page - 1)
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count_page
+                else:
+                    return restful.params_error(message="it had no other pages")
+                return restful.ok(data=dict_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#by PN的批量更改
+@csrf_exempt
+def maintain_setup_by_pn(request):
+    if request.method == "POST":
+        try:
+            main_pn = request.POST['main_partname']
+            main_count = request.POST['main_count']
+            main_day = request.POST['main_day']
+            main_date = request.POST['main_date']
+            main_user = request.POST['main_user']
+            result = PartItem.objects.filter(PN=main_pn).count()
+            if result >0:
+                PartItem.objects.filter(PN=main_pn).update(CheckCycleCount=main_count,CheckCycle=main_day,NextCheckDate=main_date,Maintainer=main_user)
+                return restful.ok(message="maintain modify success")
+            else:
+                return restful.params_error(message="PN query is null")
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#进入添加设备页面的函数的动作做添加设备手动输入的函数
+@csrf_exempt
+def maintain_add_equipment(request):
+    if request.method == "POST":
+        SN = request.POST.get("SN")
+        USN = request.POST.get("USN")
+        OSN = request.POST.get("OSN")
+        Asset = request.POST.get("Asset")
+        PN = request.POST.get("PN")
+        PartName = request.POST.get("PartName")
+        Spec = request.POST.get("Spec")
+        CheckCycleCount = request.POST.get("CheckCycleCount")
+        CheckCycle = request.POST.get("CheckCycle")
+        UsedTimes = request.POST.get("UsedTimes")
+        NextCheckDate = request.POST.get("NextCheckDate")
+        Maintainer = request.POST.get("Maintainer")
+        try:
+            SN_ob =PartItem.objects.filter(SN=SN).count()
+            maintainter_ob = User.objects.filter(Name=Maintainer).count()
+            if SN_ob !=0 or maintainter_ob ==0 :
+                return restful.params_error(message="SN or Maintainter error")
+            else:
+                PartItem.objects.create(SN=SN,USN=USN,OSN=OSN,PN=PN,PartName=PartName,Spec=Spec,UsedTimes=UsedTimes
+                                        , UpdatedTime=UpdatedTime,CheckCycle=CheckCycle,CheckCycleCount=CheckCycleCount
+                                        , NextCheckDate=NextCheckDate,ErrorCounts=0,NGRate=0,Maintainer=Maintainer,
+                                        Asset=Asset)
+                return restful.ok(message="add equipment succeed")
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+#进入添加设备的页面的 函数的动作 做批量数据的插入表里
+@csrf_exempt
+def maintain_add_equipment_ex(request):
+    if request.method == "POST":
+        file = request.FILES.get('file','')
+        file_type = file.name.split('.')[1]
+        insert_data = []
+        if file_type in ['xlsx','xls']:
+            file_path = os.path.join(settings.MEDIA_MAINTAIN_MONITOR_ROOT, file.name)
+            #开始解析上传excle的数据
+            with open(file_path,'wb+') as f:
+                for chunk in file:
+                    f.write(chunk)
+            wb =xlrd.open_workbook(file.name)
+            sheet = wb.sheet_by_index(0)  #拿到第一个文件的簿
+            maps ={
+                0:'SN',
+                1:'USN',
+                2:'OSN',
+                3:'Asset',
+                4:'PN',
+                5:'PartName',
+                6:'Spec',
+                7:'UsedTimes',
+                8:'CheckCycle',
+                9:'CheckCycleCount',
+                10:'NextCheckDate',
+                11:'Maintainer',
+            }
+            for index in range(1,sheet.nrows):
+                row= sheet.row(index)  #逐行读取文件的内容
+                row_dict = {}
+                for i in range(len(maps)):
+                    key = maps[i]
+                    cell = row[i]
+                    row_dict[key] = str(cell.value)
+                    row_dict['result'] = ""
+                data_value = xlrd.xldate_as_tuple(eval(row_dict['NextCheckDate']), wb.datemode)
+                row_dict['NextCheckDate'] = date(*data_value[:3])
+                yanzheng = PartItem.objects.filter(SN=row_dict['SN']).count()
+                maintainer = User.objects.filter(Name=row_dict['Maintainer']).count()
+                if maintainer ==0:
+                    row_dict['result'] = row_dict['result'] +" Maintainer not exist,"
+                if yanzheng !=0:
+                    row_dict['result'] = row_dict['result'] +" SN exist,"
+                if row_dict['SN'] == '':
+                    row_dict['result'] =row_dict['result']+" SN empty,"
+                if row_dict['PN'] == '':
+                    row_dict['result'] =row_dict['result']+" PN empty,"
+                if row_dict['PartName'] == '':
+                    row_dict['result'] = row_dict['result'] + " PartName empty,"
+                if row_dict['Spec'] == '':
+                    row_dict['result'] = row_dict['result'] + " Spec empty,"
+                if yanzheng ==0 and row_dict['PN'] != '' and row_dict['PartName'] != '' and row_dict['Spec'] != '':
+                    row_dict['result'] ='Success'
+                    PartItem.objects.create(SN=row_dict['SN'],USN=row_dict['USN'],OSN=row_dict['OSN'], PN=row_dict['PN']
+                                            , PartName=row_dict['PartName'], Spec=row_dict['Spec'], UsedTimes=int(eval(row_dict['UsedTimes']))
+                                            , CheckCycle=int(eval(row_dict['CheckCycle']))
+                                            , CheckCycleCount=int(eval(row_dict['CheckCycleCount']))
+                                            , NextCheckDate=row_dict['NextCheckDate']
+                                            , ErrorCounts=0, NGRate=0, Maintainer=row_dict['Maintainer'],
+                                            Asset=row_dict['Asset'])
+                insert_data.append(row_dict)
+        else:
+            return restful.params_error(message="input document is error")
+        try:
+            return restful.ok(data=insert_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#进入设备保养的筛选出来用户需要的数据之后给页面
+@csrf_exempt
+def maintain_query_operation(request):
+    if request.method =="POST":
+        SN = str(request.POST['sn'])
+        PN = str(request.POST['pn'])
+        Status = request.POST['status']
+        Next_maintain_time = request.POST['next_time']
+        Next_maintain_time_1 = request.POST['next_time_1']
+        try:
+            dict_data={}
+            end_time = datetime.now()
+            current_time = end_time.strftime('%Y-%m-%d')
+            count = Configuration.objects.get(Type="mt_count")
+            date = Configuration.objects.get(Type="mt_date")
+            date = int(date.Max)
+            delta = timedelta(date)
+            check_time = end_time + delta
+            count = str(int(count.Max))
+            limit_value1 = list(Configuration.objects.filter(Type="mt_count").values("Max", "Id"))
+            limit_value2 = list(Configuration.objects.filter(Type="mt_date").values("Max", "Id"))
+            sql = 'SELECT "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate","NextCheckCount","PN" FROM "PartItem" where 1=1 '
+            if SN !="":
+                sql = sql+' AND "SN" =\'' + SN + '\''
+            if PN !="":
+                sql = sql+' AND "PN" =\'' + PN + '\''
+            if Status == "正常":
+                sql = sql + 'AND ("NextCheckCount"-"UsedTimes" > '+count+' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+check_time.strftime("%Y-%m-%d")+'\')'
+            if Status == "预警":
+                sql = sql + ' AND ("NextCheckCount"-"UsedTimes" <= ' + count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + current_time + '\')'
+                sql = sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + current_time + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + check_time.strftime("%Y-%m-%d") + '\' AND "NextCheckCount"-"UsedTimes">=0)'
+            if Status == "超期":
+                sql = sql + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+current_time+'\')'
+            if Next_maintain_time !="":
+                sql = sql+' AND ("NextCheckDate" >= \''+Next_maintain_time+'\' AND "NextCheckDate" <= \''+Next_maintain_time_1+'\')'
+            cur = connection.cursor()
+            cur.execute(sql)
+            data = cur.fetchall()
+            for i in range(len(data)):
+                if data[i][6] == None and data[i][7] == 0:
+                    data[i] = list(data[i])
+                    data[i].extend([0, 0])
+                else:
+                    query_time = datetime.strptime(str(datetime.now()).split(' ')[0], "%Y-%m-%d")
+                    time_u = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                    stand_count = data[i][7] - data[i][4]
+                    stand_date = (time_u - query_time).days
+                    data[i] = list(data[i])
+                    data[i].extend([stand_count, stand_date])
+            dict_data['limit_value1'] = limit_value1
+            dict_data['limit_value2'] = limit_value2
+            dict_data['data'] = data
+            return restful.ok(data=dict_data)
+        except:
+            return restful.params_error(message='need setup maintain data')
+
+#用户使用保养得页面进行保养动作的函数
+@csrf_exempt
+def maintain_query_maintain(request):
+    if request.method == "POST":
+        try:
+            maintain_ids = request.POST.getlist('statement_mt[]')
+            maintain_date = request.POST['maintain_date']
+            maintain_operator = request.POST['maintain_operator']
+            maintain_status = request.POST['maintain_status']
+            maintain_text = request.POST['maintain_text']
+            maintain_remark = request.POST['maintain_remark']
+            #写入保养计入原有的数据到记录表
+            operator = User.objects.get(Name=maintain_operator)
+            op_id =operator.Id
+            for j in list(maintain_ids):
+                maintain_log = PartItem.objects.get(Id=int(j))
+                MaintenanceLog.objects.create(PartItemId=j,PartName=maintain_log.PartName,UpdatedTime=UpdatedTime
+                                             ,Status=maintain_status,Content=maintain_text,OperatorId=op_id
+                                             ,CheckDueDate=maintain_log.NextCheckDate,CheckCount=maintain_log.NextCheckCount
+                                             ,UsedTimes=maintain_log.UsedTimes,Remark=maintain_remark,MaintenanceDate=maintain_date)
+                maintain_obj = PartItem.objects.get(Id=int(j))
+                if maintain_obj.CheckCycleCount != None or maintain_obj.UsedTimes !=None:
+                    maintain_obj.NextCheckCount = maintain_obj.CheckCycleCount+maintain_obj.UsedTimes
+                    maintain_obj.save()
+                if maintain_obj.CheckCycle != None:
+                    start_time = datetime.now()
+                    delta = timedelta(days=maintain_obj.CheckCycle)
+                    maintain_obj.NextCheckDate = start_time+delta
+                    maintain_obj.save()
+            return restful.ok(message="maintain ok")
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#设备保养记录数据获取函数
+@csrf_exempt
+def maintain_equipment_log(request):
+    if request.method == "GET":
+        page = int(request.GET.get('page'))
+        number = request.GET.get('num')
+        dict_data ={}
+        sql_count = 'select count(*) from "MaintenanceLog" where 1=1'
+        sql = 'select "PartItem"."SN","PartItem"."PN","PartItem"."Spec","Status","PartItem"."Maintainer","Content"' \
+              ',to_char("MaintenanceDate",\'yyyy-MM-dd\'),"PartItemId" FROM "MaintenanceLog" left outer join "PartItem" on "MaintenanceLog"."PartItemId" ="PartItem"."Id" '
+        cur = connection.cursor()
+        cur.execute(sql_count)
+        count = cur.fetchall()  # 获取赛选的条件的总数值
+        if number == "All":
+            cur = connection.cursor()
+            cur.execute(sql)
+            data = cur.fetchall()
+            dict_data['data'] = data
+            dict_data['page_count'] = count[0][0]
+            return restful.ok(data=dict_data)
+        if number != "All":
+            number = int(number)
+            count_page = count[0][0] // number  # 总数除以一页显示多少条，得到总的页数
+            if count[0][0] % number > 0:
+                count_page += 1
+            if page <= count_page:
+                sql = sql + ' order by "MaintenanceDate" limit ' + str(number) + ' offset ' + str(page - 1)
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                dict_data['data'] = data
+                dict_data['page_count'] = count_page
+            else:
+                return restful.params_error(message="it had no other pages")
+            return restful.ok(data=dict_data)
+        return restful.ok(data=dict_data)
+#设备保养记录的查询函数的调用
+def maintain_query_log(request):
+    if request.method == "POST":
+        page = int(request.POST.get('page'))
+        number = request.POST.get('num')
+        log_s_time = request.POST['log_s_time']
+        log_e_time = request.POST['log_e_time']
+        log_SN = str(request.POST['log_SN'])
+        log_PN = str(request.POST['log_PN'])
+        log_Spec = str(request.POST['log_Spec'])
+        log_maintainer = str(request.POST['log_maintainer'])
+        sql_count = 'select count("MaintenanceLog"."PartItemId") from "MaintenanceLog" left outer join "PartItem" on "MaintenanceLog"."PartItemId" ="PartItem"."Id" where 1=1'
+        sql = 'select "PartItem"."SN","PartItem"."PN","PartItem"."Spec","Status","PartItem"."Maintainer","Content"' \
+              ',to_char("MaintenanceDate",\'yyyy-MM-dd\'),"PartItemId" FROM "MaintenanceLog" left outer join "PartItem" on "MaintenanceLog"."PartItemId" ="PartItem"."Id"  where 1=1'
+        dict_data = {}
+        if log_s_time != "":
+            sql = sql + ' AND "MaintenanceLog"."MaintenanceDate" >=\'%{0}%\''.format(log_s_time)
+            sql_count = sql_count + ' AND "MaintenanceLog"."MaintenanceDate" >=\'%{0}%\''.format(log_s_time)
+        if log_e_time != "":
+            sql = sql + ' AND "MaintenanceLog"."MaintenanceDate" <=\'%{0}%\''.format(log_e_time)
+            sql_count = sql_count + ' AND "MaintenanceLog"."MaintenanceDate" <=\'%{0}%\''.format(log_e_time)
+        if log_SN != "":
+            sql = sql + ' AND "PartItem"."SN" =\'' + log_SN + '\''
+            sql_count = sql_count + ' AND "PartItem"."SN" =\'' + log_SN + '\''
+        if log_PN != "":
+            sql = sql + ' AND "PartItem"."PN" =\'' + log_PN + '\''
+            sql_count = sql_count + ' AND "PartItem"."PN" =\'' + log_PN + '\''
+        if log_Spec != "":
+            sql = sql + ' AND "PartItem"."Spec" =\'' + log_Spec + '\''
+            sql_count = sql_count + ' AND "PartItem"."Spec" =\'' + log_Spec + '\''
+        if log_maintainer != "":
+            sql = sql + ' AND "PartItem"."Maintainer" =\'' + log_maintainer + '\''
+            sql_count = sql_count + ' AND "PartItem"."Maintainer" =\'' + log_maintainer + '\''
+        # sql=sql+' left outer join "PartItem" on "MaintenanceLog"."PartItemId" ="PartItem"."Id"'
+        # sql_count=sql_count+' left outer join "PartItem" on "MaintenanceLog"."PartItemId" ="PartItem"."Id"'
+        cur = connection.cursor()
+        cur.execute(sql_count)
+        count = cur.fetchall()  # 获取赛选的条件的总数值
+        if number == "All":
+            cur = connection.cursor()
+            cur.execute(sql)
+            data = cur.fetchall()
+            dict_data['data'] = data
+            dict_data['page_count'] = count[0][0]
+            return restful.ok(data=dict_data)
+        if number != "All":
+            number = int(number)
+            count_page = count[0][0] // number  # 总数除以一页显示多少条，得到总的页数
+            if count[0][0] % number > 0:
+                count_page += 1
+            if page <= count_page:
+                sql = sql + ' order by "Maintainer" limit ' + str(number) + ' offset ' + str(page - 1)
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                dict_data['data'] = data
+                dict_data['page_count'] = count_page
+            else:
+                return restful.params_error(message="it had no other pages")
+            return restful.ok(data=dict_data)
+        try:
+            return restful.ok(message='')
+        except Exception as e:
+            return restful.params_error(message=repr(e))

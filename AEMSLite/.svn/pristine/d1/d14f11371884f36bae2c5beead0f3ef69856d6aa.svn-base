@@ -1,0 +1,319 @@
+//数据显示部分的data
+function chart_tab(){
+    $(".statistic").removeClass("yc")
+    $(".budget").addClass("yc")
+    $(".user").addClass("yc")
+    $(".budgetform").addClass("yc")
+    $(".merge").addClass("yc")
+    $(".detail").addClass("yc")
+    $(".ng").addClass("yc")
+    $(".maintain").addClass("yc")
+    $(".operation").addClass("yc")
+    $(".modifypwd").addClass("yc")
+    $.ajax({
+    'type':'GET',
+    'data':{},
+    'url':'/analysis/analysis-equipment-info/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                num1=result['data'].user
+                num2=result['data'].filterSN
+                visua_pic(num1,num2)
+                num=result['data'].errorcode
+                ErrorCode(num)
+                num3=result['data'].Partname
+                pic_partname (num3)
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+//后台获取我的设置的数据的函数
+function add_modal_sa(){
+    $.ajax({
+        'type':'GET',
+        'data':{},
+        'url':'/analysis/analysis-setup-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                data = result['data']
+                if(data.length == 0){
+                    $("#pic_set").modal("show")
+                    $("#input_sa").empty();
+//                    var input_id_min=1
+//                    var input_id_max=6
+//                    var add_text_1=`
+//                    <div class="form-group row">
+//                        <span class="col-form-label" onclick="add_input();"><img alt="Add" src="/static/images/add.png"></span>
+//                        <label class="col-md-2 col-form-label" style="padding-right:0px">最小值</label>
+//                        <div class="col-md-4 has-feedback">
+//                            <input type="text" class="form-control input_class">
+//                        </div>
+//                        <label class="col-md-1.5 col-form-label" style="padding-right:0px">最大值</label>
+//                        <div class="col-md-4 has-feedback">
+//                            <input type="text" class="form-control input_class">
+//                        </div>
+//                        <span class="col-form-label" onclick="delete_input(${num});"><img alt="Add" src="/static/images/add.png"></span>
+//                    </div>
+//                    `
+//                    $("#input_sa").append(add_text_1)
+                }
+                if(data.length >0){
+                    $("#input_sa").empty();
+//                    for(var i=0; i<data.length; i++){
+//                        var add_html = `
+//                            <div class="form-group row">
+//                                <span data-dismiss="modal" onclick="add_input();"><img alt="Add" src="/static/images/add.png"></span>
+//                                <label for="input_note" class="col-md-2 col-form-label">最小值</label>
+//                                <div class="col-md-4 has-feedback">
+//                                    <input type="text" class="form-control input_class" id="${data.Min}">
+//                                </div>
+//                                <label for="input_note" class="col-md-2 col-form-label">最大值</label>
+//                                <div class="col-md-4 has-feedback">
+//                                    <input type="text" class="form-control input_class" id="${data.Max}">
+//                                </div>
+//                                <span data-dismiss="modal" onclick="delete_input();"><img alt="Add" src="/static/images/add.png"></span>
+//                            </div>
+//                        `
+//                        $("#input_sa").append(add_html)
+//                    }
+                }
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+//增加输入框的动作
+function add_input(){
+    if(num == 5){
+         window.message.showError("only add five items")
+    }else{
+        var input_add_id=num+1
+//        var input_del_num=del_num+1
+        var form_group = 100-num
+//        var input_group_add=input_id_max+1
+//        console.log(input_add_id,input_del_num)
+//        document.getElementById("change_num").onclick ="add_input(${input_add_id});"
+//        var add_text = `
+//        <div class="form-group row" id="${num}">
+//            <span class="col-form-label"><img alt="Add" src="/static/images/add.png"></span>
+//            <label class="col-md-2 col-form-label" style="padding-right:0px">最小值</label>
+//            <div class="col-md-4 has-feedback">
+//                <input type="text" class="form-control input_class" >
+//            </div>
+//            <label class="col-md-1.5 col-form-label" style="padding-right:0px">最大值</label>
+//            <div class="col-md-4 has-feedback">
+//                <input type="text" class="form-control input_class">
+//            </div>
+//            <span class="col-form-label" onclick="delete_input(${num});"><img alt="Add" src="/static/images/add.png"></span>
+//        </div>
+//        `
+//        $("#input_sa").append(add_text)
+    }
+}
+//删除输入框的动作
+function delete_input(){
+//    console.log(number_del)
+//    if(number_del == 5){
+//    }else{
+////        var form_group = number_del+4
+////        document.getElementById(number_del.toString()).onclick = function(){alert(form_group)};
+////        document.getElementById(form_group.toString()).remove()
+//    }
+
+}
+
+//设置fail区间的值得提交
+function add_sa(){
+//验证是否是数值类型js匹配函数
+    var Regx =  /^[0-9]*$/;
+    if(Regx.test(maintain_count)){
+        $.ajax({
+            'type':'POST',
+            'data':{},
+            'url':'/analysis/analysis-setup-value/',
+            success:function(result){
+                if(result['code'] === 200){
+                    console.log(result['data'])
+                }else{
+                    window.message.showError(result['message'])
+                }
+            }
+        })
+    }else{
+        window.message.showError("min and max must be digital")
+    }
+}
+
+
+//获取查询数据的get的数据
+function query_data(){
+    $.ajax({
+        'type':'GET',
+        'data':{},
+        'url':'/analysis/analysis-query-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                data =result['data']
+                stage_data =data.stage
+                $("#statistics_query_stage").empty()
+                $("#statistics_query_stage").append('<option>All</option>')
+                $("#statistics_query_fixture").empty()
+                $("#statistics_query_fixture").append('<option>All</option>')
+                $("#statistics_query_usn").empty()
+                $("#statistics_query_usn").append('<option>All</option>')
+                for(var i=0; i<stage_data.length; i++){
+                    var html_query='<option>'+stage_data[i].Stage+'</option>'
+                    $("#statistics_query_stage").append(html_query)}
+                USN_data = data.USN
+                for(var j=0; j<USN_data.length; j++){
+                    var html_query_usn='<option>'+USN_data[j].USN+'</option>'
+                    $("#statistics_query_usn").append(html_query_usn)}
+                fixture_data =data.fixtureId
+                for(var k=0; k<fixture_data.length; k++){
+                    var html_query_fixture='<option>'+fixture_data[k].FixtureId+'</option>'
+                    $("#statistics_query_fixture").append(html_query_fixture)}
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+//查询数据的post 提交数据的查询
+function query_info_data(){
+    var stage = $("#statistics_query_stage").val()
+    var fixture = $("#statistics_query_fixture").val()
+    var usn = $("#statistics_query_usn").val()
+    var begin = $("#min").val()
+    var end = $("#max").val()
+    var startTime = new Date(Date.parse(begin));
+    var endTime = new Date(Date.parse(end));
+    if(startTime>endTime){
+       window.message.showError("startTime can't > endTime")
+       return false;
+    }
+    if(begin == end && begin !="" && end !=""){
+        end=end+' 23:59:59';
+    }
+    if(stage == "All"){
+        stage =""
+    }
+    if(fixture == "All"){
+        fixture =""
+    }
+    if(usn == "All"){
+        usn =""
+    }
+    data ={
+        'begin':begin,
+        'end':end,
+        'stage':stage,
+        'fixture':fixture,
+        'usn':usn,
+    }
+    console.log(data)
+    $.ajax({
+        'type':'POST',
+        'data':data,
+        'url':'/analysis/analysis-query-info/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+
+
+//数据显示部分
+function number_tab(){
+    $(".data_tab").removeClass("yc")
+    $(".chart_pic").addClass("yc")
+    $.ajax({
+    'type':'GET',
+    'data':{},
+    'url':'/analysis/analysis-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+                statistics_data = result['data']
+                $("#statistics_data").empty()
+                for(var i=0; i<statistics_data.length; i++){
+                    statistics_data[i].TrnDate = (statistics_data[i].TrnDate).split("T")[0]
+                    if(statistics_data[i].Asset == null){statistics_data[i].Asset = '';}
+                    var statistics_data_add = '<tr>'
+                        +'<td class="yc">'+statistics_data[i].Id+'</td>'
+                        +'<td>'+statistics_data[i].USN+'</td>'
+                        +'<td>'+statistics_data[i].SN+'</td>'
+                        +'<td>'+statistics_data[i].OSN+'</td>'
+                        +'<td>'+statistics_data[i].Asset+'</td>'
+                        +'<td>'+statistics_data[i].PN+'</td>'
+                        +'<td>'+statistics_data[i].PartName+'</td>'
+                        +'<td>'+statistics_data[i].Spec+'</td>'
+                        +'<td>'+statistics_data[i].UsedTimes+'</td>'
+                        +'<td>'+statistics_data[i].Stage+'</td>'
+                        +'<td>'+statistics_data[i].FixtureId+'</td>'
+                        +'<td>'+statistics_data[i].Result+'</td>'
+                        +'<td>'+statistics_data[i].ErrorCode+'</td>'
+                        +'<td>'+statistics_data[i].TrnDate+'</td>'
+                    +'</tr>'
+                    $("#statistics_data").append(statistics_data_add)
+                }
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+}
+
+
+//数据后台获取的数据函数
+function query_table(){
+    $.ajax({
+        'type':'GET',
+        'data':{},
+        'url':'/analysis/analysis-tab-data/',
+        success:function(result){
+            if(result['code'] === 200){
+                console.log(result['data'])
+//                data =result['data']
+//                stage_data =data.stage
+//                $("#statistics_query_stage").empty()
+//                $("#statistics_query_stage").append('<option>All</option>')
+//                $("#statistics_query_fixture").empty()
+//                $("#statistics_query_fixture").append('<option>All</option>')
+//                $("#statistics_query_usn").empty()
+//                $("#statistics_query_usn").append('<option>All</option>')
+//                for(var i=0; i<stage_data.length; i++){
+//                    var html_query='<option>'+stage_data[i].Stage+'</option>'
+//                    $("#statistics_query_stage").append(html_query)}
+//                USN_data = data.USN
+//                for(var j=0; j<USN_data.length; j++){
+//                    var html_query_usn='<option>'+USN_data[j].USN+'</option>'
+//                    $("#statistics_query_usn").append(html_query_usn)}
+//                fixture_data =data.fixtureId
+//                for(var k=0; k<fixture_data.length; k++){
+//                    var html_query_fixture='<option>'+fixture_data[k].FixtureId+'</option>'
+//                    $("#statistics_query_fixture").append(html_query_fixture)}
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+
+
+}
+
+//查询数据的post提交的数据的查询
+function tab_query_select(){}

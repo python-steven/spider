@@ -1,0 +1,51 @@
+{% load static %}
+<div style="position:relative;top:51.62px">
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+        <div class="sidebar-sticky">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" id="bd_gt" onclick="budget()">
+                        <span data-feather="home"></span>
+                        预算编码
+                    </a>
+                </li>
+                {% if user.Role != "user" %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="chart_tab()">
+                        <span data-feather="file"></span>
+                        统计分析
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="maintain()">
+                        <span data-feather="shopping-cart"></span>
+                        设备保养
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="check_ng()">
+                        <span data-feather="search"></span>
+                        NG率查询
+                    </a>
+                </li>
+                {% endif %}
+                {% if user.Role == "admin" %}
+                <li class="nav-item">
+                    <a class="nav-link " href="#" onclick="manage()">
+                        <span data-feather="home"></span>
+                        系统管理
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link " href="#" onclick="modifypwd()">
+                        <span data-feather="home"></span>
+                        修改密码
+                    </a>
+                </li>
+            </ul>
+            
+        </div>
+    </nav>
+</div>

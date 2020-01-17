@@ -1,0 +1,405 @@
+function user(){
+    $(".useres").removeClass("yc")
+    $(".customer").addClass("yc")
+    $(".partment").addClass("yc")
+
+}
+
+//侧边栏的click就加载获取的数据
+function manage(){
+    $(".user").removeClass("yc")
+    $(".budget").addClass("yc")
+    $(".ng").addClass("yc")
+    $(".budgetform").addClass("yc")
+    $(".merge").addClass("yc")
+    $(".detail").addClass("yc")
+    $(".maintain").addClass("yc")
+    $(".statistic").addClass("yc")
+    $(".operation").addClass("yc")
+    $(".modifypwd").addClass("yc")
+
+    $.ajax({
+        'type':'GET',
+        'url':'/management/user-data/',
+        'data':{},
+        success:function(result){
+            if(result['code'] === 200){
+                $('#users-in-add').empty();
+                console.log(result['data'])
+                data = result['data']
+                for(var a=0; a<data.length; a++){
+                  var users ="<tr>"
+                        +"<td>"
+                          +"<span data-toggle='modal' onclick='modify_User();' data-target='#modify-user'><img alt='Add' src='/static/images/icon_modify.gif'></span>"
+                          +"<span data-toggle='modal' onclick='delete_User();' data-target='#delete-user'><img alt='Delete' src='/static/images/icon_del.gif'></span>"
+                        +"</td>"
+                        +"<td class='yc'>"+data[a][0]+"</td>"
+                        +"<td>"+data[a][1]+"</td>"
+                        +"<td>"+data[a][2]+"</td>"
+                        +"<td>"+data[a][3]+"</td>"
+                        +"<td>"+data[a][4]+"</td>"
+                        +"<td>"+data[a][5]+"</td>"
+                      +"</tr>"
+                   $('#users-in-add').append(users)
+                }
+            }else{
+            window.message.showError(result['message'])
+            }
+        }
+
+    })
+}
+
+//添加用户的功能
+function approval(){
+    var usernumber = $("#userNum").val();
+    var username = $("#username").val();
+    var department = $("#department").val();
+    var mail = $("#email").val();
+    var role = $("#Role").val();
+    usernumber = usernumber.replace(/\s+/g,"");
+    username = username.replace(/\s+/g,"");
+    department = department.replace(/\s+/g,"");
+    mail = mail.replace(/^\s+|\s+$/g,"");
+    role = role.replace(/\s+/g,"");
+//    console.log(usernumber,username,department,mail,role);
+    if(usernumber == ""){
+        window.message.showError("employee number can not empty")
+        return false;
+    }
+    if(username == ""){
+        window.message.showError("user name can not empty")
+        return false;
+    }
+    if(department == ""){
+        window.message.showError("department can not empty")
+        return false;
+    }
+    if(mail ==""){
+        window.message.showError("mail can not empty")
+        return false;
+    }
+    if(role ==""){
+        window.message.showError("role can not empty")
+        return false;
+    }
+    var data={
+        'userid':usernumber,
+        'username':username,
+        'department':department,
+        'mail':mail,
+        'role':role,
+
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/user-data/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                manage();
+            }else{
+            window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+
+
+}
+//修改用户信息
+function modify_user(){
+    var id = $("#modifyId").val()
+//    var employee_id = $("#modifyNum").val()
+    var username = $("#modifyName").val()
+    var department = $("#modifyPart").val()
+//    var email = $("#modifyEmail").val()
+    var role = $("#modifyRole").val()
+//    id = id.replace(/\s+/g,"");
+//    employee_id = employee_id.replace(/\s+/g,"");
+    username = username.replace(/\s+/g,"");
+    department = department.replace(/\s+/g,"");
+//    email = email.replace(/^\s+|\s+$/g,"");
+    console.log(id,username,department,role)
+    data ={
+        'id':id,
+//        'employee_id':employee_id,
+        'username':username,
+        'department':department,
+//        'email':email,
+        'role':role,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/user-modify/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                console.log("修改成功")
+                manage();
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+
+}
+//删除用户
+function del_user(){
+    var name = $("#deluser").text()
+//    console.log(name)
+    data = {
+        'name':name,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/user-delete/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                manage();
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+    })
+
+
+}
+
+
+
+
+//客户的管理获取数据
+function customer(){
+    $(".customer").removeClass("yc")
+    $(".useres").addClass("yc")
+    $(".partment").addClass("yc")
+
+    $.ajax({
+        'type':'GET',
+        'url':'/management/Customer-Info/',
+        'data':{},
+        success:function(result){
+            if(result['code'] === 200){
+                $('#customer-in-add').empty();
+                console.log(result['data'])
+                data = result['data']
+                for(var a=0; a<data.length; a++){
+                    var customer ='<tr>'
+                      +'<td>'
+                        +'<span data-toggle="modal" onclick="modify_customer();" data-target="#modify-customer"><img alt="Add" src="/static/images/icon_modify.gif"></span>'
+                        +'<span data-toggle="modal" onclick="delete_customer();" data-target="#delete-customer"><img alt="Delete" src="/static/images/icon_del.gif "></span>'
+                      +'</td>'
+                      +'<td class="yc">'+data[a].Id+'</td>'
+                      +'<td>'+data[a].Customer+'</td>'
+                    +'</tr>'
+                    $('#customer-in-add').append(customer)
+                }
+            }else{
+                    window.message.showError(result['message'])
+                }
+        }
+    })
+
+}
+//客户的数据添加
+function Customer_add_button(){
+    var customer_val = $("#Customer_info_Add").val()
+    customer_val = customer_val.replace(/\s+/g,"");
+//    console.log(customer)
+    if(customer_val == ""){
+        window.message.showError("customer can not empty")
+        return false
+    }
+    var data ={
+        'customer_val':customer_val,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/Customer-Info/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                customer();
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+
+}
+//客户数据修改
+function modify_cus(){
+    var customer_name = $("#modifyCusName").val()
+    var customer_id = $("#modifyCusId").val()
+    customer_name = customer_name.replace(/\s+/g,"");
+    customer_id = customer_id.replace(/\s+/g,"");
+//    console.log(customer_name,customer_id)
+    data = {
+        'customer_name':customer_name,
+        'customer_id':customer_id,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/Customer-modify/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                customer();
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+}
+//客户删除
+function del_cus(){
+    var del_nm = $("#delCusName").text()
+//    console.log(del_nm)
+    data = {
+        'del_nm':del_nm,
+    }
+
+    $.ajax({
+        'type':'POST',
+        'url':'/management/Customer-delete/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                customer();
+            }else{
+                window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+}
+
+
+//部门管理的获取数据
+function partment(){
+    $(".partment").removeClass("yc")
+    $(".useres").addClass("yc")
+    $(".customer").addClass("yc")
+
+    $.ajax({
+        'type':'GET',
+        'url':'/management/Department-Info/',
+        'data':{},
+        success:function(result){
+            if(result['code'] === 200){
+                $('#department-in-add').empty();
+                console.log(result['data'])
+                data = result['data']
+                for(var a=0; a<data.length; a++){
+                    var department ='<tr>'
+                      +'<td>'
+                        +'<span data-toggle="modal" onclick="modify_department();" data-target="#modify-department"><img alt="Add" src="/static/images/icon_modify.gif"></span>'
+                        +'<span data-toggle="modal" onclick="delete_department();" data-target="#delete-department"><img alt="Delete" src="/static/images/icon_del.gif "></span>'
+                      +'</td>'
+                      +'<td class="yc">'+data[a].Id+'</td>'
+                      +'<td>'+data[a].Department+'</td>'
+                    +'</tr>'
+                    $('#department-in-add').append(department)
+                }
+            }else{
+                    window.message.showError(result['message'])
+                }
+        }
+    })
+}
+
+//部门管理添加数据
+function more_department(){
+    var department = $("#add_department").val();
+    department = department.replace(/\s+/g,"");
+//    console.log(department);
+    if(department == ""){
+        window.message.showError("department can not empty")
+        return false;
+    }
+    var data = {
+        'department':department,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/Department-Info/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                partment();
+            }else{
+            window.message.showError(result['message'])
+            }
+        }
+
+    })
+}
+//修改部门数据
+function modify_dep(){
+    var modifyPartName = $("#modifyPartName").val()
+    var modifyPartId = $("#modifyPartId").val()
+//    console.log(modifyPartId,modifyPartName)
+    var data = {
+        'modifyPartName':modifyPartName,
+        'modifyPartId':modifyPartId,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/Department-modify/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                partment();
+            }else{
+            window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+
+
+}
+//删除部门信息
+function del_depart(){
+    var delPart = $("#delPart").text()
+//    console.log(delPart)
+    var data = {
+    'delPart':delPart,
+    }
+    $.ajax({
+        'type':'POST',
+        'url':'/management/Department-delete/',
+        'data':data,
+        success:function(result){
+            if(result['code'] === 200){
+                window.message.showSuccess(result['message'])
+                partment();
+            }else{
+            window.message.showError(result['message'])
+            }
+        }
+
+    })
+
+}
+
+

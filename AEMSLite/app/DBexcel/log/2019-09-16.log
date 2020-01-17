@@ -1,0 +1,8 @@
+2019-09-16 03:00:03,610 - manage - INFO - 2019-09-16
+2019-09-16 03:00:03,611 - manage - INFO - 开始处理文件：/home/AEMSLite/AEMSLite/app/DBexcel/pending/F136_20190915.xlsx
+2019-09-16 03:00:28,114 - manage - INFO - total 7904 rows
+2019-09-16 03:00:28,114 - manage - INFO - insert PartItemResult 0 rows
+2019-09-16 03:00:28,114 - manage - INFO - update PartItem 1379 rows
+2019-09-16 03:00:28,114 - manage - INFO - insert PartItem 0 rows
+2019-09-16 03:00:28,114 - manage - INFO - spent 24 s
+

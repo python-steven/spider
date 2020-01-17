@@ -1,0 +1,49 @@
+{% load static %}
+<div style="position:relative;top:51.62px">
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+        <div class="sidebar-sticky">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" id="bd_gt" onclick="budget()">
+                        <span class="lng" data-feather="home" data-name="Budget">预算编码</span>
+                    </a>
+                </li>
+                {% if user.Role != "user" %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="chart_tab()" id="test_num">
+                        <span class="lng" data-feather="file" data-name="Statistics">统计分析</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="maintain()">
+                        <span class="lng" data-feather="shopping-cart" data-name="Equipment">设备保养</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="main_monitor()">
+                        <span class="lng" data-feather="shopping-cart" data-name="Maintenance">设备保养监控</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="check_ng()">
+                        <span class="lng" data-feather="search" data-name="NG">设备NG率监控</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% if user.Role == "admin" %}
+                <li class="nav-item">
+                    <a class="nav-link " href="#" onclick="manage()">
+                        <span class="lng" data-feather="home" data-name="System">系统管理</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link " href="#" onclick="modifypwd()">
+                        <span class="lng" data-feather="home" data-name="modify_pwd">修改密码</span>
+                    </a>
+                </li>
+            </ul>
+            
+        </div>
+    </nav>
+</div>

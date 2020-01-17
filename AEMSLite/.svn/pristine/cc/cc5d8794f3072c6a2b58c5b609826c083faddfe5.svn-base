@@ -1,0 +1,890 @@
+{% load static %}
+<div class="maintain yc">
+    <main role="main" class="col-md-12 col-lg-12 pt-3 px-4">
+        <div class="row col-md-12 text-center" style="border-bottom:1px solid #e5e9f2;">
+            <h3 class="lng" data-name="Equipment">设备保养</h3>
+        </div>
+        <div class="row col-md-12">
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active lng" href="javascript:void(0)" onclick="maintion_index();" data-name="EquipmentList">设备列表</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link lng" href="javascript:void(0)" onclick="add_maintoin();" data-name="AddEquipment">添加设备</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link lng" href="javascript:void(0)" onclick="add_log();" data-name="MyEquipment">我添加的设备</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link lng" href="javascript:void(0)" onclick="operation();" data-name="EquipmentMaintaince">设备保养</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:void(0)" onclick="query_log();">设备保养记录</a>
+                </li>
+            </ul>
+        </div>
+        <div class="maintain_index">
+           <div class="row col-md-12 text-left" style="padding-top:2px;padding-bottom:3px;border-top:1px solid #e5e9f2;">
+                <div class="row col-md-9">
+                    <a href="javascript:void(0)" style="padding-top:10px; padding-bottom:10px;padding-right:10px;">
+                        <img alt="Add" src="{% static 'images/filter.png' %}">
+                        <span data-toggle="modal" data-target="#main_query" onclick="query_maintain_selector();" class="lng" data-name="Filter">
+                         筛选
+                        </span>
+                    </a>
+                    <a href="javascript:void(0)" style="padding-top:10px; padding-bottom:10px;padding-right:10px;">
+                        <img alt="Add" src="{% static 'images/setting.png' %}">
+                        <span data-toggle="modal" data-target="#maintain_pn" class="lng" data-name="ByPNSetting">
+                             by PN设定
+                        </span>
+                    </a>
+                </div>
+                <div style="max-height:31px; margin-bottom:2px; float:left;">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link " href="javascript:void(0)" onclick="previous_main();" id="previous_m">Previous</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link active" href="javascript:void(0)" onclick="next_main();" id="next_m">Next</a>
+                        </li>
+                    </ul>
+                </div>
+                <div style="max-height:34px;margin-bottom:2px;float:right;">
+                    <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="setup_main">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+           </div>
+            <div class="row col-md-12 text-left" style="padding-top:3px; padding-bottom:30px;">
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm" >
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>SN</th>
+                                <th>PN</th>
+                                <th>PartName</th>
+                                <th class="lng" data-name="Spec">品名</th>
+                                <th class="lng" data-name="CheckCountCycle">保养周期(按次数)</th>
+                                <th class="lng" data-name="UsedTimes">已使用次数</th>
+                                <th class="lng" data-name="CheckCycle">保养周期(按时间)</th>
+                                <th class="lng" data-name="NextCheckTime">下次保养时间</th>
+                                <th class="lng" data-name="Maintenaner">保养人</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintain_tr">
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="add_main yc">
+            <main role="main" class="col-md-12 ml-sm-auto col-lg-12 pt-3 px-4">
+                <div class="container">
+                    <div class="row col-md-9">
+                        <a href="javascript:void(0)" style="padding-bottom:10px;padding-right:10px;" onclick="openBrowse();" >
+                            <img alt="Add" src="{% static 'images/export.gif' %}">
+                            <span class="lng" data-name="ImportEquipment">
+                                Excel汇入设备
+                            </span>
+                        </a>
+                        <input type="file" class="yc" id="file" name="file" onchange="add_equipment_file();">
+                    </div>
+                    <div class=" col-md-12 text-left" style="padding-top:20px;padding-bottom:30px;margin:0 auto">
+                        <form id="add_equipment_info">
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">SN<span class="text-danger">*</span></label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="add_SN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label">USN</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="add_USN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label ">OSN</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="add_OSN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label">Asset</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="add_Asset">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">PN<span class="text-danger">*</span></label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_PN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label" >PartName<span class="text-danger">*</span></label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_PartName">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label" ><span class="lng" data-name="Spec">品名</span><span class="text-danger">*</span></label>
+                                <div class="col-md-10 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_spec">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label lng" data-name="CheckCountCycle">保养周期(按次数)</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_main_count">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label lng" data-name="CheckCycle">保养周期(按时间)</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_main_date">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label" ><span class="lng" data-name="UsedTimes">已使用次数</span><span class="text-danger">*</span></label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_usedtimes">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label lng" data-name="NextCheckTime">下次保养时间</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="add_next_main_date">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row" autocomplete="off">
+                                <label for="input_dept" class="col-md-2 col-form-label lng" data-name="Maintenaner">保养人</label>
+                                <div class="col-md-10 has-feedback" >
+                                    <input type="text"  name="upload_file" class="form-control input_class" id="add_Maintainer" data-provide="typeahead" >
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class=" col-md-12 text-center" >
+                        <button type="button" class="btn btn-default" onclick="add_equipment();">提交</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <div class="operation yc">
+            <main role="main" class="col-md-12  col-lg-12 pt-3 px-4">
+                <div class="row col-md-12 text-left" style="padding-top:13px; padding-bottom:3px;" >
+                    <div class="col-lg-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <form class="form-horizontal" role="form" autocomplete="off">
+                                    <div class="form-row">
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="">SN</label>
+                                                <input name="maintentdate" type="text" class="form-control" id="query_main_sn">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="">PN</label>
+                                                <input name="maintentdate" type="text" class="form-control" id="query_main_pn">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="form-group">
+                                                <label class="">状态</label>
+                                                <select name="state" class="form-control" id="query_main_status">
+                                                    <option></option>
+                                                    <option>超期</option>
+                                                    <option>预警</option>
+                                                    <option>正常</option>
+                                                    <option>未设定</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="">下次保养时间</label>
+                                                <div class="input-group">
+                                                    <input name="maintentdate" type="text" class="form-control" id="query_main_next_time" placeholder="From">
+                                                    <input name="maintentdate_to" type="text" class="form-control" id="to_query_main_next_time" placeholder="To">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-12 text-right">
+                                            <button type="button"class="btn btn-primary " onclick="query_main();">筛选</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row col-md-12 text-left" style="padding-top:23px; padding-bottom:3px;">
+                    <div class="col-lg-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <form class="form-horizontal" role="form" autocomplete="off">
+                                    <div class="form-row">
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label >保养时间<span class="text-danger">*</span></label>
+                                                <input name="maintentdate" type="text" class="form-control" id="maintain_setup_date">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label >保养人<span class="text-danger">*</span></label>
+                                                <input name="people" type="text" class="form-control" id="maintain_operator">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label >保养状态<span class="text-danger">*</span></label>
+                                                <select name="state" class="form-control" id="maintain_status">
+                                                    <option>PASS</option><option>NG</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label >保养内容<span class="text-danger">*</span></label>
+                                        <textarea name="textarea" rows="1" class="form-control" id="maintain_text_era"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label >备注</label>
+                                        <textarea name="textarea" rows="1" class="form-control" id="maintain_remark"></textarea>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm" >
+                                          <thead>
+                                            <tr>
+                                                <th><input type="checkbox" name="mt_all"><label class="yc">全选</label></th>
+                                              <th>SN</th>
+                                              <th>品名</th>
+                                              <th>保养周期(按次数)</th>
+                                              <th>已使用次数</th>
+                                              <th>保养周期(按时间)</th>
+                                              <th>下次保养时间</th>
+                                              <th>状态</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody id="mt_query_detail">
+                                            
+                                          </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-12 text-center">
+                                        <button type="button" class="btn btn-primary" onclick="maintain_query_data();">保养</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <div class="result yc">
+            <main role="main" class="col-md-12 col-lg-12 pt-3 px-4">
+                <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm" >
+                          <thead>
+                            <tr>
+                              <th>SN</th>
+                              <th>PN</th>
+                              <th>品名</th>
+                              <th>保养周期(按次数)</th>
+                              <th>已使用次数</th>
+                              <th>保养周期(按时间)</th>
+                              <th>下次保养时间</th>
+                              <th>保养人</th>
+                              <th>汇入结果</th>
+                            </tr>
+                          </thead>
+                          <tbody id="add_result">
+                          </tbody>
+                        </table>
+                    </div>
+                    <div class=" col-md-12 text-center" >
+                    <button type="button" class="btn btn-default" onclick="re_add_main();" >确认</button>
+                </div>
+                </div>
+            </main>
+        </div>
+        <div class = "query_log yc">
+            <main role="main" class="col-md-12 col-lg-12 pt-3 px-4">
+                <div class="row col-md-12 text-left" style="padding-top:2px;padding-bottom:3px;border-top:1px solid #e5e9f2;">
+                    <div class="row col-md-9">
+                        <a href="#" style="padding-top:8px; padding-bottom:8px;padding-right:8px;">
+                            <span data-toggle="modal" data-target="#log_query" onclick="query_log_selector();">
+                                <img alt="Add" src="{% static 'images/filter.png' %}"> 筛选
+                            </span>
+                        </a>
+                    </div>
+                    <div style="max-height:31px; margin-bottom:2px; float:left;">
+                        <ul class="pagination">
+                            <li class="page-item">
+                                <a class="page-link " href="javascript:void(0)" onclick="previous_log();" id="previous_lo">Previous</a>
+                            </li>
+
+                            <li class="page-item">
+                                <a class="page-link active" href="javascript:void(0)" onclick="next_log()" id="next_lo">Next</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div style="max-height:34px;margin-bottom:2px;float:right;">
+                        <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="main_lo_setup">
+                            <option id="install" value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row col-md-12 text-left" style="padding-bottom:30px;">
+                    <div class="table-responsive ">
+                        <table class="table table-striped table-sm" >
+                            <thead>
+                                <tr>
+                                  <th>SN</th>
+                                  <th>PN</th>
+                                  <th>SPEC</th>
+                                  <th>STATUS</th>
+                                  <th>保养人</th>
+                                  <th>CONTENT</th>
+                                  <th>DATE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maintain_log">
+       
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <div class="add_log yc">
+            <div class="row col-md-12 text-left" style="padding-top:3px;">
+                <div class="row col-md-9">
+                    <a href="javascript:void(0)" style="padding-top:10px; padding-bottom:10px;padding-right:10px;">
+                        <span data-toggle="modal" data-target="#add_log_query">
+                            <img alt="Add" src="{% static 'images/filter.png' %}"> 筛选
+                        </span>
+                    </a>
+                </div>
+                <div style="max-height:31px;float:left;">
+                    <ul class="pagination">
+                        <li class="page-item">
+                            <a class="page-link " href="javascript:void(0)" onclick="previous_add_log();" id="previous_add_log">Previous</a>
+                        </li>
+
+                        <li class="page-item">
+                            <a class="page-link active" href="javascript:void(0)" onclick="next_add_log();" id="next_add_log">Next</a>
+                        </li>
+                    </ul>
+                </div>
+                <div style="max-height:31px;float:right;">
+                    <select class="pagination" style="width:100%;height:33px;border-color:#dee2e6;" id="add_log_page_setup">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row col-md-12 text-left">
+                <div style="overflow-x:auto">
+                    <table class="table table-striped table-sm text-center" style="min-width:1960px" >
+                        <thead>
+                            <tr>
+                                <th>操作</th>
+                                <th>SN</th>
+                                <th>USN</th>
+                                <th>OSN</th>
+                                <th>Asset</th>
+                                <th>PN</th>
+                                <th>PartName</th>
+                                <th>Spec</th>
+                                <th>保养周期(按次数)</th>
+                                <th>保养周期(按时间)</th>
+                                <th>已使用次数</th>
+                                <th>下次保养时间</th>
+                                <th>保养人</th>
+                            </tr>
+                        </thead>
+                        <tbody id="add_equipment_log">
+                            <tr>
+                                <!--<td>Z17002D78</td>-->
+                                <!--<td>65500V01000184300333J0E1</td>-->
+                                <!--<td>M393A1G40EB2-CTD-0302CD9C</td>-->
+                                <!--<td>MVZ122334</td>-->
+                                <!--<td>7368DIM0016</td>-->
+                                <!--<td>DDR4 DIMM</td>-->
+                                <!--<td>CINDY/SAMSUNG/8GB/2666V/M393A1G40EB2-CTD7Q/PLUMAS</td>-->
+                                <!--<td>1000</td>-->
+                                <!--<td>7</td>-->
+                                <!--<td>990</td>-->
+                                <!--<td>2019-05-31</td>-->
+                                <!--<td>Steven_X_Xu</td>-->
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modify_log yc">
+            <main role="main" class="col-md-12 ml-sm-auto col-lg-12 pt-3 px-4">
+                <div class="container">
+                    <div class=" col-md-12 text-left" style="padding-top:20px;padding-bottom:30px;margin:0 auto">
+                        <form id="add_equipment_info">
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">SN</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" readonly unselectable = "on" id="mo_sn">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label">USN</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="mo_usn">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label ">OSN</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="mo_osn">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label">Asset</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class text-muted" id="mo_asset">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">PN</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="mo_pn">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label" >PartName</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="mo_partname">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">品名</label>
+                                <div class="col-md-10 has-feedback">
+                                    <input type="text" class="form-control input_class" id="mo_spec">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">已使用次数<span class="text-danger">*</span></label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="mo_use_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                                <label for="input_note" class="col-md-2 col-form-label">下次保养时间</label>
+                                <div class="col-md-4 has-feedback">
+                                    <input type="text" class="form-control input_class" id="mo_next_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_dept" class="col-md-2 col-form-label">保养人<span class="text-danger">*</span></label>
+                                <div class="col-md-10 has-feedback" >
+                                    <input type="text" class="form-control input_class" id="mo_name" onchange="my_principal(this);">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class=" col-md-12 text-center" >
+                        <button type="button" class="btn btn-default" onclick="re_add_log();">提交</button>
+                        <button type="button" class="btn btn-default" onclick="re_log();">取消</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </main>
+    <div class="modal" id="delete_log" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+              <div class="modal-header">
+                <h4 class="modal-title">设备删除</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+                <div class="modal-body">
+                    <div class="col-md-12 text-center">
+                        <input class="yc" id="delete_log_id">
+                        <h5>请确认是否删除</h5>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal" onclick="delete_add_log();">确定</button>
+                  <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="add_log_query" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">筛选</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off" id="my_add_query">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">开始时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_s_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">截止时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_e_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">SN</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_SN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">PN</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_PN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">PartName</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_PartName">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">品名</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_Spec">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="reminders" class="col-md-4 col-form-label">保养人</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="l_Maintainer">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="query_log_info();">确定</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="log_query" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">筛选</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off" id="log_add_data">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">开始时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="log_start_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">截止时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="log_end_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">SN</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="log_SN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">PN</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="log_PN">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">品名</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="log_Spec">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="reminders" class="col-md-4 col-form-label">保养人</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="log_maintainer">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="query_log_fun();">确定</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="maintain_sn" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="item_sn"></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group">
+                                <input class="yc" id="sn">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="ret_count">
+                                    <label  for="checkbox1">重设保养次数</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="main_count">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox"  id="ret_day">
+                                    <label  for="checkbox2">重设保养周期</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="main_cycle">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="ret_date">
+                                    <label  for="checkbox3">重设下次保养时间</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class" name="input_note" id="main_date">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="ret_user">
+                                    <label  for="checkbox3">重设保养人</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="main_user">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " onclick="setup_restart();" data-dismiss="modal" aria-label="Close">确定</button>
+                        <button type="submit" class="btn btn-primary "data-dismiss="modal" aria-label="Close" >取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div> 
+    <div class="modal" id="maintain_pn" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">By PN设定</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="input_note" class="col-md-12 col-form-label">PN</label>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="setup_main_partname">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="rt_count">
+                                    <label  for="checkbox1">重设保养次数</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="setup_main_count">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="rt_day">
+                                    <label  for="checkbox2">重设保养周期</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class"  name="input_note" id="setup_main_day">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="rt_date">
+                                    <label  for="checkbox3">重设下次保养时间</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class" name="input_note" id="setup_main_date">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="custom-checkbox custom-control">
+                                    <input type="checkbox" id="rt_user">
+                                    <label  for="checkbox3">重设保养人</label>
+                                </div>
+                                <div class="col-md-12 has-feedback">
+                                    <input type="text" class="form-control input_class" name="input_note" id="setup_main_user">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " onclick="setup_by_PN();"data-dismiss="modal" aria-label="Close">确定</button>
+                        <button type="submit" class="btn btn-primary "data-dismiss="modal" aria-label="Close" >取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="main_query" tabindex="-1" role="dialog" aria-labelledby="" aria-hidden="true" data-backdrop="static">
+        <div class="modal-dialog" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">筛选</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <form class="form-horizontal" role="form" autocomplete="off" id="main_query_select">
+                    <div class="modal-body">
+                        <div class="card-body">
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">开始时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="maintain_start_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">截止时间</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="maintain_end_time">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">SN</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="maintain_q_sn">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="input_note" class="col-md-4 col-form-label">品名</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="maintain_q_partname">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="reminders" class="col-md-4 col-form-label">保养人</label>
+                                <div class="col-md-8 has-feedback">
+                                    <input type="text" class="form-control input_class" id="maintain_q_user">
+                                    <span class="help-block"></span>
+                                    <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary " data-dismiss="modal" onclick="maintain_query();">确定</button>
+                        <button type="submit" class="btn btn-primary " data-dismiss="modal">取消</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

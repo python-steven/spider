@@ -1,0 +1,22 @@
+WUTU Config file V1.00.00
+
+//---- Test Mode -------------
+    Full test (All USB device need has different ID)
+    0x00 - Normal mode    (Utility control by user)
+    0x01 - Auto Test mode (When utility running will auto test usb device)
+    0x03 - Silence mode   (When utility running will auto test usb device & auto close this utility)              
+    Simple test (All USB device use same ID. All switch set to ON)
+    0x80 - Normal mode for simple test   (Utility control by user)
+    0x81 - Auto Test mode for simple test(When utility running will auto test usb device)
+    0x83 - Silence mode for simple test  (When utility running will auto test usb device & auto close this utility)
+[WUTU Config]
+    0x83
+[WUTU Config End]
+
+//--------------------------
+   1 - This usb device need be test 
+   0 - Don't test this usb device   
+   USB 1    USB 2   USB 3    USB 4   USB 5    USB 6   USB 7    USB 8
+[USB Test Device]
+     1        1       0        0       0        0       0        0
+[USB Test Device END]

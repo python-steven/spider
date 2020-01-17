@@ -1,0 +1,39 @@
+<!-- load header.html -->
+{% extends "common/header.html" %}
+<!-- rename page title -->
+{% block title%}AEMS Lite{% endblock %}
+
+
+<!-- add page body content -->
+{% block body %}
+
+<div class="container-fluid" style="padding-top:0px;">
+    <div class="row">
+        <div style="width:16.66%;">
+            {% include "index/sidebar.html" %}
+        </div>
+        <div class="col-md-10 management-content" id="dashboard" style="font-family:insert;">
+            <div class="row breadcrumb" style="position:relative;top:51.62px" >
+                <span class="text col-md-12 text-right">
+                    {{user.Role}} / {{user.Name}} / <span onclick="logout();" style="cursor:pointer"><font color="#00F">Sign out</font></span>
+                </span>
+
+            </div>
+            <div style="position:relative;top:40px;">
+                {% include "budget/budget_coding_form.html" %}
+                {% include "budget/budgeform.html" %}
+                {% include "budget/detailform.html" %}
+                {% include "statistics/statistics.html" %}
+                {% include "maintain/maintain.html" %}
+                {% include "main_monitor/main_monitor.html" %}
+                {% include "NG/device.html" %}
+                {% include "manage/manage.html" %}
+                {% include "modifypwd/modifypwd.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- end wrap -->
+{% endblock %}
+
+

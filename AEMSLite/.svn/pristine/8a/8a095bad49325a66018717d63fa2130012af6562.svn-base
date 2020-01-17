@@ -1,0 +1,39 @@
+{% load static %}
+<div class="modifypwd yc">
+    <main role="main" class="col-md-12 col-lg-12 pt-3 px-4">
+        <div class="row col-md-12 text-center" style="border-bottom:1px solid #e5e9f2;margin-bottom:30px;">
+            <h3>密码修改</h3>
+        </div>
+        <div class=" col-md-4 text-center m-auto" method="POST">
+            <form class="form-horizontal" role="form" autocomplete="off">
+                <div class="form-group row">
+                    <label for="input_note"  class="col-md-4 col-form-label">原始密码</label>
+                    <div class="col-md-8 has-feedback">
+                        <input type="password" class="form-control input_class" id="oldpwd" autocomplete='tel' >
+                        <span class="help-block"></span>
+                        <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="input_note"  class="col-md-4 col-form-label">新密码</label>
+                    <div class="col-md-8 has-feedback">
+                        <input type="password" class="form-control input_class" id="newpwd" autocomplete='tel'>
+                        <span class="help-block"></span>
+                        <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="input_note"  class="col-md-4 col-form-label">重复新密码</label>
+                    <div class="col-md-8 has-feedback">
+                        <input id="again" type="password" class="form-control input_class"autocomplete='tel' >
+                        <span class="help-block"></span>
+                        <span class="glyphiconglyphicon-ok form-control-feedback"></span>
+                    </div>
+                </div>
+                <div class="col-md-12 m-auto">
+                    <button type="button" class="btn btn-primary" onclick="old_new_pwd();">确认</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>

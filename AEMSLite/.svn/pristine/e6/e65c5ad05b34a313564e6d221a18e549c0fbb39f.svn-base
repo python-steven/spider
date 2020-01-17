@@ -1,0 +1,33 @@
+from datetime import datetime
+from django.shortcuts import render,redirect
+from app.login.models import User
+from django.contrib import messages
+from django.http import HttpResponseRedirect,HttpResponse
+from app.restful import force_logout
+
+def access_control(method):
+    def check(request):
+        now_time = datetime.now()
+        last_access_time_str = request.COOKIES.get('LAST_ACCESS_TIME')
+        
+        last_access_time = datetime.strptime(last_access_time_str, '%Y-%m-%d %H:%M:%S')
+
+        # if user did not operate web for more than 30 minutes, need logout
+        passed_time = now_time - last_access_time
+        if passed_time.total_seconds() > 3600:
+            msg = "You don't operate AEMSLite system over 30 mins. For security issue you are logout automatically."
+            return  force_logout(message=msg)
+        
+        # if user info have been updated, need logout
+        user_id = request.session.get('user_Id','')
+        user_info = User.objects.get(Id=user_id)
+        updated_time_tmp = user_info.UpdatedTime
+        updated_time = datetime.strptime(str(updated_time_tmp).split('.')[0], '%Y-%m-%d %H:%M:%S')
+
+        passed_time = updated_time - last_access_time
+        if passed_time.total_seconds() >= 0:
+            msg = "Your info have been updated! For security issue you are logout automatically."
+            return  force_logout(message=msg)
+
+        return method(request)
+    return check

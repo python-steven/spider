@@ -1,0 +1,4 @@
+#LWP-Cookies-2.0
+Set-Cookie3: ASP.NET_SessionId=tqehpzfelqjvncrqigf2tpax; path="/"; domain="wzsqis.wistron.com"; path_spec; discard; HttpOnly=None; version=0
+Set-Cookie3: ClientCulture="zh-CHS"; path="/"; domain="wzsqis.wistron.com"; path_spec; expires="2020-09-22 17:00:18Z"; version=0
+Set-Cookie3: LoginUrl="RmJJUnhjNXJ2a2M4d3F6VDRFUmlKQVJ3S3REZ0NMUUdnZzFtRkVlK1Z4V0NIQTlXUjRlb1FVUnNudXgvQ2ZURw.."; path="/"; domain="wzsqis.wistron.com"; path_spec; expires="2019-11-22 17:00:18Z"; version=0

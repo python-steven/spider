@@ -1,0 +1,1380 @@
+from django.shortcuts import render
+from django.shortcuts import render, redirect
+# from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from app.login.models import User,Department,Customer,BudgetCodeForm,PartItem,PartItemResult,MaintenanceLog,Configuration
+from app.login.views import Update_User_IsActivated
+from django.views.generic.base import View
+from django.db import connection
+from django.http import HttpResponseRedirect,HttpResponse
+from app import restful,mail
+from datetime import datetime,timedelta
+from django.conf import settings
+import random
+import string
+import os
+import pytz
+import time
+from openpyxl import load_workbook,Workbook
+import json
+
+class maintain_monitor_info(View):
+    @csrf_exempt
+    def get(self,request):
+        try:
+            page = int(request.GET.get('page'))
+            number = request.GET.get('num')
+            #这里是获取近一周的数据，但是由于数据没有更新，所以捞取全部当前的数据
+            start = datetime.now()
+            time_stand = (list(PartItem.objects.order_by("-TrnDate").filter(TrnDate__lte=start).values("TrnDate")))[0]['TrnDate']
+            # start=datetime.strptime((str(time_stand).split('T'))[0],"%Y-%m-%d")
+            start_select=time_stand
+            delta = timedelta(days=7)
+            end = start_select-delta
+            dict_data={}
+            data_count = PartItem.objects.order_by("Id").filter(TrnDate__range=(end,start_select)).count()
+            if number == "All":
+                data = list(PartItem.objects.order_by("Id").filter(TrnDate__range=(end,start)).values())
+                mt_count = list(Configuration.objects.filter(Type="mt_count").values("Max"))
+                mt_date = list(Configuration.objects.filter(Type="mt_date").values("Max"))
+                start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d") #获取当前的日期
+                #计算保养次数和保养日期的水准并加入到后面两组数据当中去做判断
+                for i in range(0,len(data)):
+                    if data[i]['NextCheckDate'] == None:
+                        data[i]['stand_date'] = "null"
+                    else:
+                        time_end = datetime.strptime(str(data[i]['NextCheckDate']).split(' ')[0],
+                                                     "%Y-%m-%d")  # 获取数据表里面的日期数
+                        days = time_end - start_time
+                        data[i]['stand_date'] = days.days
+                    if data[i]['NextCheckCount'] == 0:
+                        data[i]['stand_count'] = 'null'
+                    else:
+                        data[i]['stand_count'] = data[i]['NextCheckCount'] - data[i]['UsedTimes']
+                dict_data['data'] = data
+                dict_data['mt_count'] = mt_count
+                dict_data['mt_date'] = mt_date
+                dict_data['page_count'] = data_count
+            if number != "All":
+                number = int(number)
+                page_num = data_count // number  # 总共多少页
+                if data_count % number > 0:
+                    page_num = page_num + 1
+                if page_num >= page:
+                    data = list(PartItem.objects.order_by("Id").filter(TrnDate__range=(end, start)).values()[(page - 1) * number:number * page])
+                    mt_count = list(Configuration.objects.filter(Type="mt_count").values("Max"))
+                    mt_date = list(Configuration.objects.filter(Type="mt_date").values("Max"))
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    # 计算保养次数和保养日期的水准并加入到后面两组数据当中去做判断
+                    for i in range(0, len(data)):
+                        if data[i]['NextCheckDate'] == None:
+                            data[i]['stand_date'] = "null"
+                        else:
+                            time_end = datetime.strptime(str(data[i]['NextCheckDate']).split(' ')[0],
+                                                         "%Y-%m-%d")  # 获取数据表里面的日期数
+                            days = time_end - start_time
+                            data[i]['stand_date'] = days.days
+                        if data[i]['NextCheckCount'] == 0:
+                            data[i]['stand_count'] = 'null'
+                        else:
+                            data[i]['stand_count'] = data[i]['NextCheckCount'] - data[i]['UsedTimes']
+                    dict_data['data'] = data
+                    dict_data['mt_count'] = mt_count
+                    dict_data['mt_date'] = mt_date
+                    dict_data['page_count'] = page_num
+
+            count = Configuration.objects.get(Type="mt_count")
+            date = Configuration.objects.get(Type="mt_date")
+            c_count = str(int(count.Max))
+            c_date = (start + timedelta(days=int(date.Max))).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+            # 饼状图和表格需要的判断依据数据
+            sql = 'SELECT "PartName", COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >=\''+ end.strftime("%Y-%m-%d")+'\' and to_char("TrnDate",\'yyyy-MM-dd\') <=\''+start_select.strftime("%Y-%m-%d")+'\''
+            # 柱状图需要的数据的原生语句
+            tab_sql = 'SELECT "Maintainer", COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >=\' '+ end.strftime("%Y-%m-%d")+'\' and  to_char("TrnDate",\'yyyy-MM-dd\') <=\''+start_select.strftime("%Y-%m-%d")+'\''
+
+            #正常的条件设置
+            sql_n_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\')'
+            sql_n_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+')'
+            #预警的条件设置
+            sql_w_t ='OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\')'
+            sql_w_c ='OR ( "NextCheckDate" IS NULL AND "NextCheckCount" =0 AND "NextCheckCount"-"UsedTimes" <= ' + c_count+' AND "NextCheckCount"-"UsedTimes" >= 0)'
+            #超标的条件设置
+            sql_t =  'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\')'
+            sql_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" < 0 ) '
+
+            #饼状图 正常
+            sql1 = sql + 'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\')'
+            sql1 = sql1+sql_n_t+sql_n_c+') GROUP BY "PartName"'
+            # 预警
+            sql2 = sql + ' AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0) AND ("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+            sql2 = sql2 + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)'
+            sql2 = sql2+sql_w_t+sql_w_c+') GROUP BY "PartName"'
+            # 超标
+            sql3 = sql + 'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0  AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\'))'
+            sql3 = sql3+sql_c+sql_t+') GROUP BY "PartName"'
+            #未设定
+            sql_no_nextcheckdate = 'SELECT COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >=\''+ end.strftime("%Y-%m-%d")+'\' and to_char("TrnDate",\'yyyy-MM-dd\') <=\''+start.strftime("%Y-%m-%d")+'\''+'and "NextCheckDate" IS NULL AND "NextCheckCount" =0;'
+
+            #  柱状图 正常
+            tab_normal = tab_sql + 'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND "NextCheckDate" >\''+c_date+'\')'
+            tab_normal =tab_normal+sql_n_t+sql_n_c+') GROUP BY "Maintainer"'
+            #  柱状图 预警
+            tab_warning = tab_sql + ' AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0) AND ("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+            tab_warning = tab_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)'
+            tab_warning =tab_warning+sql_w_t+sql_w_c+') GROUP BY "Maintainer"'
+            #  柱状图 超标
+            tab_danger = tab_sql + 'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0  AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\')) '
+            tab_danger =tab_danger+sql_c+sql_t+') GROUP BY "Maintainer"'
+            # 未设定
+            tab_no_nextcheckdate = 'SELECT COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >=\' '+ end.strftime("%Y-%m-%d")+'\' and  to_char("TrnDate",\'yyyy-MM-dd\') <=\''+start.strftime("%Y-%m-%d")+'\''+'and "NextCheckDate" IS NULL AND "NextCheckCount" =0;'
+
+            cur = connection.cursor()
+            cur.execute(sql1)
+            normal = cur.fetchall()
+            cur.execute(sql2)
+            warning = cur.fetchall()
+            cur.execute(sql3)
+            danger = cur.fetchall()
+            cur.execute(sql_no_nextcheckdate)
+            info = cur.fetchall()
+            info = [('None', info[0][0])]
+
+            cur = connection.cursor()
+            cur.execute(tab_normal)
+            tab_normal = cur.fetchall()
+            cur.execute(tab_warning)
+            tab_warning = cur.fetchall()
+            cur.execute(tab_danger)
+            tab_danger = cur.fetchall()
+            cur.execute(tab_no_nextcheckdate)
+            tab_info = cur.fetchall()
+            tab_info =[('None',tab_info[0][0])]
+
+            tab_data =tab_query_way(tab_normal,tab_warning,tab_danger,tab_info)
+            dict_data['normal'] = normal
+            dict_data['warning'] = warning
+            dict_data['danger'] = danger
+            dict_data['None'] = info
+            dict_data['tab_data'] = tab_data
+            dict_data['select_start'] = start_select
+            dict_data['select_end'] = end
+            return restful.ok(data=dict_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+    # 设置预警次数和预警天数
+    @csrf_exempt
+    def post(self,request):
+        try:
+            maintain_count = request.POST['maintain_count']
+            maintain_date = request.POST['maintain_date']
+            maintain_receiver = request.POST.getlist('maintain_receiver[]')
+            maintain_receiver = list(maintain_receiver)
+            parameter_count = Configuration.objects.filter(Type="mt_count")
+            parameter_date = Configuration.objects.filter(Type="mt_date")
+            mail_receiver_count = ",".join(maintain_receiver)
+            if parameter_count and parameter_date:
+                Configuration.objects.filter(Type="mt_count").update(Max=maintain_count,Min=0,Reminders=mail_receiver_count)
+                Configuration.objects.filter(Type="mt_date").update(Max=maintain_date,Min=0,Reminders=mail_receiver_count)
+                return restful.ok(message="setup parameter success")
+            else:
+                Configuration.objects.create(Type="mt_count", Max=maintain_count, Min=0, Reminders=mail_receiver_count)
+                Configuration.objects.create(Type="mt_date", Max=maintain_date, Min=0, Reminders=mail_receiver_count)
+                return restful.ok(message="setup parameter create success")
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+#设定之前 先查询 是否有设定。获取之前的设定参数并显示到页面上去
+def setup_range_before(request):
+    if request.method == "GET":
+        try:
+            parameter_count = Configuration.objects.filter(Type="mt_count").count()
+            parameter_date = Configuration.objects.filter(Type="mt_date").count()
+            data_user = list(User.objects.filter(Role="admin").values("Email")) + list(User.objects.filter(Role="equipment_room").values("Email"))
+            if parameter_count !=0 and parameter_date !=0:
+                data1 = list(Configuration.objects.filter(Type="mt_count").values('Type','Max'))
+                data2 = list(Configuration.objects.filter(Type="mt_date").values('Type','Max',"Reminders"))
+                data = data1+data2+data_user
+                return restful.ok(data=data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#对保养得数据进行查询功能的实现
+def maintain_query(request):
+    if request.method == "POST":
+        try:
+            start = datetime.now()
+            page = int(request.POST.get('page',''))
+            number = request.POST.get('num','')
+            sn = str(request.POST.get('sn',''))
+            part_name = request.POST.get('partname','')
+            status = request.POST.get('status','')
+            s_time = request.POST.get('s_time','')
+            e_time = request.POST.get('e_time','')
+            user = str(request.POST.get('user',''))
+            dict_data = {}
+            normal = []
+            warning = []
+            danger = []
+            info = []
+            #计算 查询数据的总的多少条数据
+            sql_count = 'select count(*) FROM "PartItem" where 1=1 '
+            #查询条件的数据
+            sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate","Maintainer","TrnDate","NextCheckCount" FROM "PartItem" WHERE 1=1 '
+            # 饼图数据按正常和预警和超标分类计算数量
+            visual_sql = 'SELECT "PartName", COUNT("PartName") FROM "PartItem" where 1=1 '
+            # 柱状图的数据 按条件查询出来之后再 按负责人分类
+            tab_sql = 'SELECT "Maintainer", COUNT("PartName") FROM "PartItem" where 1=1 '
+
+            count_count = Configuration.objects.get(Type="mt_count")
+            date = Configuration.objects.get(Type="mt_date")
+            dict_data['limit_value1'] = int(count_count.Max)
+            dict_data['limit_value2'] = date.Max
+            c_count = str(int(count_count.Max))
+            c_date = (start + timedelta(days=int(date.Max))).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+            # 预设区间的筛选，回滚点击视图的函数的加载
+            time_stand = (list(PartItem.objects.order_by("-TrnDate").filter(TrnDate__lte=start).values("TrnDate")))[0]['TrnDate']
+            start_select = time_stand
+            delta = timedelta(days=7)
+            end = start_select - delta
+            callback_sql =' AND to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime("%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start_select.strftime("%Y-%m-%d") + '\''
+            if sn == "" and part_name == "" and s_time == "" and e_time == "" and user == "" and status =="":
+                sql =sql + callback_sql
+                sql_count =sql_count + callback_sql
+                visual_sql =visual_sql + callback_sql
+                tab_sql =tab_sql + callback_sql
+            if status != "":
+                if sn != "":
+                    sql_count = sql_count + 'AND "SN" = \'' + sn + '\''
+                    sql = sql + 'AND "SN" = \'' + sn + '\''
+                    visual_sql = visual_sql + 'AND "SN" = \'' + sn + '\''
+                    tab_sql = tab_sql + 'AND "SN" = \'' + sn + '\''
+                if part_name != "":
+                    sql_count = sql_count + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                    sql = sql + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                    visual_sql = visual_sql + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                    tab_sql = tab_sql + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                if s_time != "":
+                    sql_count = sql_count + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                    sql = sql + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                    visual_sql = visual_sql + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                    tab_sql = tab_sql + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                if e_time != "":
+                    sql_count = sql_count + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+                    sql = sql + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+                    visual_sql = visual_sql + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+                    tab_sql = tab_sql + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+                if user != "":
+                    sql_count = sql_count + 'AND "Maintainer" = \'{0}\''.format(user)
+                    sql = sql + 'AND "Maintainer" = \'{0}\''.format(user)
+                    visual_sql = visual_sql + 'AND "Maintainer" = \'{0}\''.format(user)
+                    tab_sql = tab_sql + 'AND "Maintainer" = \'{0}\''.format(user)
+                # 正常的条件设置
+                sql_n_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\')'
+                sql_n_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ')'
+                # 预警的条件设置
+                sql_w_t = 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime(
+                    "%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\')'
+                sql_w_c = 'OR ( "NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0)'
+                # 超标的条件设置
+                sql_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') <\'' + start.strftime("%Y-%m-%d") + '\')'
+                sql_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" < 0 ) '
+
+                if status == "正常":
+                    sql_count = sql_count+'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\') '
+                    sql_count =sql_count+sql_n_t+sql_n_c+');'
+
+                    sql = sql+'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\' )'
+                    sql = sql+sql_n_t+sql_n_c+')'
+
+                    visual_sql_normal = visual_sql+'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\' )'
+                    visual_sql_normal =visual_sql_normal+sql_n_t+sql_n_c+' ) GROUP BY "PartName";'
+
+                    tab_normal = tab_sql+'AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\''+c_date+'\' )'
+                    tab_normal = tab_normal+sql_n_t+sql_n_c+' ) GROUP BY "Maintainer";'
+
+                    cur = connection.cursor()
+                    cur.execute(visual_sql_normal)
+                    normal = cur.fetchall()
+
+                    cur = connection.cursor()
+                    cur.execute(tab_normal)
+                    tab_normal =cur.fetchall()
+                    tab_normal = tab_query_way(tab_normal,[],[],[])
+                    dict_data['tab_data'] = tab_normal
+                if status == "预警":
+                    sql_count = sql_count+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                    sql_count = sql_count + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))'
+                    sql_count = sql_count+sql_w_t+sql_w_c+')'
+
+                    sql = sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                    sql = sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))'
+                    sql = sql+sql_w_t+sql_w_c+')'
+
+                    visual_sql = visual_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                    visual_sql_waring = visual_sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)) '
+                    visual_sql_waring = visual_sql_waring+sql_w_t+sql_w_c+') GROUP BY "PartName"'
+
+                    tab_warning = tab_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                    tab_warning = tab_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)) '
+                    tab_warning = tab_warning+sql_w_t+sql_w_c+' ) GROUP BY "Maintainer"'
+
+                    cur = connection.cursor()
+                    cur.execute(visual_sql_waring)
+                    warning = cur.fetchall()
+
+                    cur.execute(tab_warning)
+                    tab_warning = cur.fetchall()
+                    tab_warning = tab_query_way([],tab_warning,[],[])
+                    dict_data['tab_data'] = tab_warning
+                if status == "超标":
+                    sql = sql+'and ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\'))'
+                    sql = sql+sql_t+sql_c+')'
+
+                    sql_count = sql_count+'and ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\'))'
+                    sql_count = sql_count+sql_t+sql_c+')'
+
+                    visual_sql_danger = visual_sql+'and ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\')) '
+                    visual_sql_danger = visual_sql_danger+sql_t+sql_c+' ) GROUP BY "PartName"'
+
+                    tab_danger = tab_sql+'and ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\'))'
+                    tab_danger =tab_danger+sql_t+sql_c+' ) GROUP BY "Maintainer"'
+                    cur = connection.cursor()
+                    cur.execute(visual_sql_danger)
+                    danger = cur.fetchall()
+                    cur.execute(tab_danger)
+                    tab_danger = cur.fetchall()
+                    tab_danger = tab_query_way([], [], tab_danger,[])
+                    dict_data['tab_data'] = tab_danger
+                if status == "未设定":
+                    sql = sql +'AND "NextCheckDate" IS NULL AND "NextCheckCount" =0'
+
+                    visual_sql_no_checkdate = sql_count + 'AND "NextCheckDate" IS NULL AND "NextCheckCount" =0;'
+                    sql_count = sql_count + 'AND "NextCheckDate" IS NULL AND "NextCheckCount" =0;'
+
+                    cur = connection.cursor()
+                    cur.execute(visual_sql_no_checkdate)
+                    visual_sql_no_checkdate = cur.fetchall()
+                    info = [('None',visual_sql_no_checkdate[0][0])]
+                    info = tab_query_way([], [], [],info)
+                    dict_data['tab_data'] = info
+                dict_data['normal'] = normal
+                dict_data['warning'] = warning
+                dict_data['danger'] = danger
+                dict_data['None'] = info
+                cur = connection.cursor()
+                cur.execute(sql_count)
+                count = cur.fetchall()  # 数量的总数
+                if number == "All":
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    # 针对data 进行判断和算出次数水平和周期天数
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    for i in range(0, len(data)):
+                        data[i] = list(data[i])
+                        if data[i][6] == None:
+                            data[i].append("null")
+                        else:
+                            time_end = datetime.strptime(str(data[i][6]).split(' ')[0],"%Y-%m-%d")  # 获取数据表里面的日期数
+                            days = time_end - start_time
+                            data[i].append(days.days)
+                        if data[i][9] == 0:
+                            data[i].append("null")
+                        else:
+                            data[i].append( data[i][9] - data[i][4])
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count[0][0]
+                if number != "All":
+                    number = int(number)
+                    count_page = count[0][0] // int(number)  # 总数除以一页显示多少条，得到总的页数
+                    if count[0][0] % number > 0:
+                        count_page += 1
+                    if page <= count_page:
+                        sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str((page - 1)*number)
+                        cur = connection.cursor()
+                        cur.execute(sql)
+                        data = cur.fetchall()
+                        # 针对data 进行判断和算出次数水平和周期天数
+                        start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                        for i in range(0, len(data)):
+                            data[i] = list(data[i])
+                            if data[i][6] == None:
+                                data[i].append("null")
+                            else:
+                                time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                                days = time_end - start_time
+                                data[i].append(days.days)
+                            if data[i][9] == 0:
+                                data[i].append("null")
+                            else:
+                                data[i].append(data[i][9] - data[i][4])
+                        dict_data['data'] = data
+                        dict_data['page_count'] = count_page
+                    if page > count_page:
+                        sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str(0)
+                        cur = connection.cursor()
+                        cur.execute(sql)
+                        data = cur.fetchall()
+                        # 针对data 进行判断和算出次数水平和周期天数
+                        start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                        for i in range(0, len(data)):
+                            data[i] = list(data[i])
+                            if data[i][6] == None:
+                                data[i].append("null")
+                            else:
+                                time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                                days = time_end - start_time
+                                data[i].append(days.days)
+                            if data[i][9] == 0:
+                                data[i].append("null")
+                            else:
+                                data[i].append(data[i][9] - data[i][4])
+                        dict_data['data'] = data
+                        dict_data['page_count'] = count_page
+
+                dict_data['normal'] = normal
+                dict_data['warning'] = warning
+                dict_data['danger'] = danger
+                dict_data['None'] = info
+                return restful.ok(data=dict_data)
+            else:
+                if sn != "":
+                    sql_count = sql_count + 'AND "SN" = \'' + sn + '\''
+                    sql = sql + 'AND "SN" = \'' + sn + '\''
+                    visual_sql = visual_sql + 'AND "SN" = \'' + sn + '\''
+                    tab_sql = tab_sql + 'AND "SN" = \'' + sn + '\''
+                if part_name != "":
+                    sql_count = sql_count + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                    sql = sql + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                    visual_sql = visual_sql + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                    tab_sql = tab_sql + 'AND "PartName" ilike \'%{0}%\''.format(part_name)
+                if s_time != "":
+                    sql_count = sql_count + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                    sql = sql + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                    visual_sql = visual_sql + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                    tab_sql = tab_sql + 'AND "TrnDate" >= \'{0}\''.format(s_time)
+                if e_time != "":
+                    sql_count = sql_count + 'AND "TrnDate" <= \'{0}\''.format(e_time)
+                    sql = sql + 'AND "TrnDate" <= \'{0}\''.format(e_time)
+                    visual_sql = visual_sql + 'AND "TrnDate" <= \'{0}\''.format(e_time)
+                    tab_sql = tab_sql + 'AND "TrnDate" <= \'{0}\''.format(e_time)
+                if user != "":
+                    sql_count = sql_count + 'AND "Maintainer" = \'{0}\''.format(user)
+                    sql = sql + 'AND "Maintainer" = \'{0}\''.format(user)
+                    visual_sql = visual_sql + 'AND "Maintainer" = \'{0}\''.format(user)
+                    tab_sql = tab_sql + 'AND "Maintainer" = \'{0}\''.format(user)
+                # 正常的条件设置
+                sql_n_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\')'
+                sql_n_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ')'
+                # 预警的条件设置
+                sql_w_t = 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime(
+                    "%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\')'
+                sql_w_c = 'OR ( "NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0)'
+                # 超标的条件设置
+                sql_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') <\'' + start.strftime(
+                    "%Y-%m-%d") + '\')'
+                sql_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" < 0 ) '
+                #normal
+                visual_sql_normal = visual_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\''
+                visual_sql_normal = visual_sql_normal+sql_n_t+sql_n_c+')  GROUP BY "PartName"'
+                tab_normal = tab_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' '
+                tab_normal = tab_normal+sql_n_t+sql_n_c+') GROUP BY "Maintainer"'
+                #warning
+                visual_sql_waring = visual_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                visual_sql_waring = visual_sql_waring + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)) '
+                visual_sql_waring = visual_sql_waring+sql_w_t+sql_w_c+')  GROUP BY "PartName"'
+                tab_warning = tab_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                tab_warning = tab_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)) '
+                tab_warning = tab_warning+sql_w_t+sql_w_c+')  GROUP BY "Maintainer"'
+
+                #danger
+                visual_sql_danger = visual_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\')'
+                visual_sql_danger = visual_sql_danger+sql_t+sql_c+')  GROUP BY "PartName"'
+                tab_danger = tab_sql+'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\') '
+                tab_danger =tab_danger+sql_t+sql_c+') GROUP BY "Maintainer"'
+
+                #None
+                visual_sql_no_checkdate = sql_count + 'AND "NextCheckDate" IS NULL AND "NextCheckCount" =0;'
+                cur = connection.cursor()
+                cur.execute(visual_sql_normal)
+                normal = cur.fetchall()
+                cur.execute(visual_sql_waring)
+                warning = cur.fetchall()
+                cur.execute(visual_sql_danger)
+                danger = cur.fetchall()
+                cur.execute(visual_sql_no_checkdate)
+                info = cur.fetchall()
+                info =[('None',info[0][0])]
+
+                cur.execute(tab_normal)
+                tab_normal = cur.fetchall()
+                cur.execute(tab_warning)
+                tab_warning = cur.fetchall()
+                cur.execute(tab_danger)
+                tab_danger = cur.fetchall()
+                tab_info = info
+                tab_data = tab_query_way(tab_normal,tab_warning, tab_danger,tab_info )
+                dict_data['tab_data'] = tab_data
+
+                dict_data['normal'] = normal
+                dict_data['warning'] = warning
+                dict_data['danger'] = danger
+                dict_data['None'] = info
+                cur = connection.cursor()
+                cur.execute(sql_count)
+                count = cur.fetchall()  # 数量的总数
+                if number == "All":
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    # 针对data 进行判断和算出次数水平和周期天数
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    for i in range(0, len(data)):
+                        data[i] = list(data[i])
+                        if data[i][6] == None:
+                            data[i].append("null")
+                        else:
+                            time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                            days = time_end - start_time
+                            data[i]['stand_date'].append(days.days)
+                        if data[i][9] == 0:
+                            data[i].append("null")
+                        else:
+                            data[i].append(data[i][9] - data[i][4])
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count[0][0]
+                if number != "All":
+                    number = int(number)
+                    count_page = count[0][0] // int(number)  # 总数除以一页显示多少条，得到总的页数
+                    if count[0][0] % number > 0:
+                        count_page += 1
+                    if page <= count_page:
+                        sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str((page - 1)*number)
+                        cur = connection.cursor()
+                        cur.execute(sql)
+                        data = cur.fetchall()
+                        # 针对data 进行判断和算出次数水平和周期天数
+                        start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                        for i in range(0, len(data)):
+                            data[i] = list(data[i])
+                            if data[i][6] == None:
+                                data[i].append("null")
+                            else:
+                                time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                                days = time_end - start_time
+                                data[i].append(days.days)
+                            if data[i][9] == 0:
+                                data[i].append("null")
+                            else:
+                                data[i].append(data[i][9] - data[i][4])
+                        dict_data['data'] = data
+                        dict_data['page_count'] = count_page
+                    if page > count_page:
+                        sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str(0)
+                        cur = connection.cursor()
+                        cur.execute(sql)
+                        data = cur.fetchall()
+                        # 针对data 进行判断和算出次数水平和周期天数
+                        start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                        for i in range(0, len(data)):
+                            data[i] = list(data[i])
+                            if data[i][6] == None:
+                                data[i].append("null")
+                            else:
+                                time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                                days = time_end - start_time
+                                data[i].append(days.days)
+                            # if data[i][9] == 0:
+                            #     data[i].append(0)
+                            # else:
+                            data[i].append(data[i][9] - data[i][4])
+                        dict_data['data'] = data
+                        dict_data['page_count'] = count_page
+
+                dict_data['normal'] = normal
+                dict_data['warning'] = warning
+                dict_data['danger'] = danger
+                dict_data['None'] = info
+                return restful.ok(data=dict_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+#对视图的点击事件的功能实现
+def maintain_monitor_visual(request):
+    if request.method == "POST":
+        try:
+            page = int(request.POST['page'])
+            number = request.POST['num']
+            status = request.POST.get('status','')
+            dict_data = {}
+            normal = []
+            warning = []
+            danger = []
+            # 这里是获取近一周的数据，但是由于数据没有更新，所以捞取全部当前的数据
+            start = datetime.now()
+            time_stand = (list(PartItem.objects.order_by("-TrnDate").filter(TrnDate__lte=start).values("TrnDate")))[0]['TrnDate']
+            start_select = time_stand
+            delta = timedelta(days=7)
+            end = start_select - delta
+            # currt = datetime.now()
+            # time_stand = (list(PartItem.objects.order_by("-TrnDate").filter(TrnDate__lte=currt).values("TrnDate")))[0]['TrnDate']
+            # # start=datetime.strptime((str(time_stand).split('T'))[0],"%Y-%m-%d")
+            # start = time_stand
+            # delta = timedelta(days=300)
+            # end = start - delta
+            count_count = Configuration.objects.get(Type="mt_count")
+            date = Configuration.objects.get(Type="mt_date")
+            dict_data['limit_value1'] = int(count_count.Max)
+            dict_data['limit_value2'] = date.Max
+            c_count = str(int(count_count.Max))
+            c_date = (start + timedelta(days=int(date.Max))).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+
+            # 计算 查询数据的总的多少条数据 to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime("%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start.strftime("%Y-%m-%d") + '\'
+            sql_count = 'select count(*) FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime("%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start_select.strftime("%Y-%m-%d") + '\' '
+            # 查询条件的数据
+            sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate","Maintainer","TrnDate","NextCheckCount" FROM "PartItem" WHERE to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime("%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start_select.strftime("%Y-%m-%d") + '\''
+            # 饼图数据按正常和预警和超标分类计算数量
+            visual_sql = 'SELECT "PartName", COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime("%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start_select.strftime("%Y-%m-%d") + '\' '
+            # 柱状图的数据 按条件查询出来之后再 按负责人分类
+            tab_sql = 'SELECT "Maintainer", COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime("%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start_select.strftime("%Y-%m-%d") + '\' '
+            # 正常的条件设置
+            sql_n_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\')'
+            sql_n_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ')'
+            # 预警的条件设置
+            sql_w_t = 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\')'
+            sql_w_c = 'OR ( "NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0)'
+            # 超标的条件设置
+            sql_d_t = 'OR ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') <\'' + start.strftime("%Y-%m-%d") + '\')'
+            sql_d_c = 'OR ("NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" < 0 ) '
+            # try:
+            if status == "#28a745":
+                sql_count = sql_count + 'and (( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' )'
+                sql_count = sql_count + sql_n_t + sql_n_c + ')'
+
+                sql = sql + 'and (( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' )'
+                sql = sql + sql_n_t + sql_n_c + ')'
+
+                visual_sql_normal = visual_sql + 'and (( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' )'
+                visual_sql_normal = visual_sql_normal + sql_n_t + sql_n_c + ') GROUP BY "PartName"'
+
+                tab_normal = tab_sql + 'and (( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'AND "NextCheckCount" !=0 AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' )'
+                tab_normal = tab_normal + sql_n_t + sql_n_c + ') GROUP BY "Maintainer"'
+                cur = connection.cursor()
+                cur.execute(visual_sql_normal)
+                normal = cur.fetchall()
+
+                cur = connection.cursor()
+                cur.execute(tab_normal)
+                tab_normal = cur.fetchall()
+                tab_normal = tab_query_way(tab_normal, [], [], [])
+                dict_data['tab_data'] = tab_normal
+            if status == "#ffc107":
+                visual_war = 'and ((to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0)  AND ' \
+                             '("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')' \
+                             ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)'
+                sql_count = sql_count + visual_war+sql_w_t+sql_w_c+')'
+                # 'and ( to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0  AND ("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                # sql_count = sql_count + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))'
+
+                sql = sql + visual_war+sql_w_t+sql_w_c+')'
+                # 'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                # sql = sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))'
+
+                visual_sql_waring = visual_sql + visual_war+sql_w_t+sql_w_c+') GROUP BY "PartName"'
+                # 'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + ' AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                # visual_sql_waring = visual_sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))  GROUP BY "PartName"'
+
+                tab_warning = tab_sql + visual_war+sql_w_t+sql_w_c+') GROUP BY "Maintainer"'
+                # 'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + ' AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                # tab_warning = tab_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))  GROUP BY "Maintainer"'
+
+                cur = connection.cursor()
+                cur.execute(visual_sql_waring)
+                warning = cur.fetchall()
+
+                cur.execute(tab_warning)
+                tab_warning = cur.fetchall()
+                tab_warning = tab_query_way([], tab_warning, [], [])
+                dict_data['tab_data'] = tab_warning
+            if status == "#dc3545":
+                visual_danger ='AND ( (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0  AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\'))'
+                sql = sql+visual_danger+sql_d_t+sql_d_c+')'
+                sql_count = sql_count+visual_danger+sql_d_t+sql_d_c+')'
+                visual_sql_danger = visual_sql+visual_danger+sql_d_t+sql_d_c+' ) GROUP BY "PartName"'
+                tab_danger = tab_sql +visual_danger+sql_d_t+sql_d_c+') GROUP BY "Maintainer"'
+                # sql = sql + 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND ("NextCheckCount" < "UsedTimes"  OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\'))'
+                #判断其中一个为空额超标数据
+                # sql_1 = 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" =0 AND "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\')'
+                # sql_2 ='OR ("NextCheckDate" IS NULL AND "NextCheckDate" IS NULL AND "NextCheckCount" !=0 AND "NextCheckCount" < "UsedTimes" )'
+                # sql_count = sql_count + 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\' AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\'))'
+
+                # visual_sql_danger = visual_sql + 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'  AND "NextCheckCount" !=0 AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\')) '
+
+                # tab_danger = tab_sql + 'OR (to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\'))'
+
+                cur = connection.cursor()
+                cur.execute(visual_sql_danger)
+                danger = cur.fetchall()
+                cur.execute(tab_danger)
+                tab_danger = cur.fetchall()
+                tab_danger = tab_query_way([], [], tab_danger, [])
+                dict_data['tab_data'] = tab_danger
+            if status == "#17a2b8":
+                sql = sql + 'AND "NextCheckDate" IS NULL AND "NextCheckCount" = 0'
+
+                visual_sql_no_checkdate = sql_count + 'AND "NextCheckDate" IS NULL AND "NextCheckCount" =0 ;'
+                sql_count = sql_count + 'AND "NextCheckDate" IS NULL AND "NextCheckCount" =0;'
+
+                cur = connection.cursor()
+                cur.execute(visual_sql_no_checkdate)
+                visual_sql_no_checkdate = cur.fetchall()
+                info = [('None', visual_sql_no_checkdate[0][0])]
+                info = tab_query_way([], [], [], info)
+                dict_data['tab_data'] = info
+            cur = connection.cursor()
+            cur.execute(sql_count)
+            count = cur.fetchall()  # 数量的总数
+            if number == "All":
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                # 针对data 进行判断和算出次数水平和周期天数
+                start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                for i in range(0, len(data)):
+                    data[i] = list(data[i])
+                    if data[i][6] == None:
+                        data[i].append("null")
+                    else:
+                        time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                        days = time_end - start_time
+                        data[i].append(days.days)
+                    if data[i][9] == 0:
+                        data[i].append("null")
+                    else:
+                        data[i].append(data[i][9] - data[i][4])
+                dict_data['data'] = data
+                dict_data['page_count'] = count[0][0]
+            if number != "All":
+                number = int(number)
+                count_page = count[0][0] // int(number)  # 总数除以一页显示多少条，得到总的页数
+                if count[0][0] % number > 0:
+                    count_page += 1
+                if page <= count_page:
+                    sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str((page - 1)*number)
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    # 针对data 进行判断和算出次数水平和周期天数
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    for i in range(0, len(data)):
+                        data[i] = list(data[i])
+                        if data[i][6] == None:
+                            data[i].append("null")
+                        else:
+                            time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                            days = time_end - start_time
+                            data[i].append(days.days)
+                        if data[i][9] == 0:
+                            data[i].append("null")
+                        else:
+                            data[i].append(data[i][9] - data[i][4])
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count_page
+                if page > count_page:
+                    sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str(0)
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    # 针对data 进行判断和算出次数水平和周期天数
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    for i in range(0, len(data)):
+                        data[i] = list(data[i])
+                        if data[i][6] == None:
+                            data[i].append("null")
+                        else:
+                            time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")  # 获取数据表里面的日期数
+                            days = time_end - start_time
+                            data[i].append(days.days)
+                        if data[i][9] == 0:
+                            data[i].append("null")
+                        else:
+                            data[i].append(data[i][9] - data[i][4])
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count_page
+
+            dict_data['normal'] = normal
+            dict_data['warning'] = warning
+            dict_data['danger'] = danger
+            return restful.ok(data=dict_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+
+
+#生成报表的数据
+def maintain_record(request):
+    if request.method == "POST":
+        maintain_id = request.POST.getlist('maintain_id[]')
+        tb1=['SN',"品名","保养周期(次数)","已使用次数","保养周期(时间)","下次保养时间","下次保养次数","保养人","预警次数","预警天数","状态"]    #表头信息
+        sql = 'select "SN","Spec","CheckCycleCount","UsedTimes","CheckCycle",to_char("NextCheckDate",\'yyyy-MM-dd\'),"NextCheckCount","Maintainer" from "PartItem" where '
+        config = 'select "Type","Max" from "Configuration" where "Type" = \''+'mt_count'+'\' or "Type" = \''+'mt_date'+'\''
+        if len(maintain_id) == 1:
+            maintain_id = maintain_id[0]
+            sql = sql + '"PartItem"."Id"=' + maintain_id
+        else:
+            maintain_id = tuple(maintain_id)
+            maintain_id = str(maintain_id)
+            sql = sql + '"PartItem"."Id" in ' + maintain_id
+        cur = connection.cursor()
+        cur.execute(sql)
+        data = cur.fetchall()
+        cur.execute(config)
+        stand_data = cur.fetchall()
+        cur.close()
+        stand = [int(attr[1]) for attr in stand_data] #[9,18]
+        for i in range(0,len(data)):
+            data[i] = list(data[i])
+        for j in range(0,len(data)):
+            data[j].extend(stand)
+        data.insert(0,tb1)
+        sheet_name = "设备保养监控报表"
+        filename = 'Equipment_NGrate' + str(int(time.time())) + '.xlsx'  #表格的名字
+        file_root = settings.MEDIA_MAINTAIN_MONITOR_ROOT                          #表格的存入目录下
+        file_url = settings.MEDIA_MAINTAIN_MONITOR_URL                            #表格的url
+        data = statement_excle(request, data, sheet_name, file_root, file_url, filename)
+        try:
+            return restful.ok(data=data)
+        except:
+            return restful.params_error(message="download fail")
+
+#生成报表并存入服务器的函数
+def statement_excle(request,data,sheet_name,file_root,file_url,filename):
+    current = datetime.now()
+    current_time = datetime.strptime(str(current).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+    delta = timedelta(days=int(data[1][9]))
+    date = current + delta
+    date = datetime.strptime(str(date).split(' ')[0], "%Y-%m-%d")
+    wb = Workbook()                                                                 #创建对象
+    wb.create_sheet(sheet_name, index=0)                                            #创建一个实例对象 第一张表格的表名字,和从第几个开始
+    sheet = wb[sheet_name]
+    for row in data:
+        if len(row)==10:
+            #normal 正常：
+            if row[6]-row[3]>row[8] and datetime.strptime(row[5], "%Y-%m-%d") > date:
+                row.append('正常')
+            #警告warning :
+            if 0<=row[6]-row[3] and row[6]-row[3]<=row[8] and datetime.strptime(row[5], "%Y-%m-%d") >=current_time :
+                row.append('预警')
+            if current_time <=datetime.strptime(row[5], "%Y-%m-%d") and datetime.strptime(row[5], "%Y-%m-%d") <= date and row[6]-row[3] >=0:
+                row.append('预警')
+            #超标 danger:
+            if row[6]-row[3]<0 or datetime.strptime(row[5], "%Y-%m-%d")<current_time:
+                row.append('超标')
+        sheet.append(row)
+    wb.save(os.path.join(file_root, filename))
+    file_url = request.build_absolute_uri(file_url + filename)
+    data = [file_url]
+    return data
+
+#捞出捞取数据库所有NG率达到或超过预警区间的USN发邮件提醒给收件人 定时的功能在被使用在DBexcle app。views里面的函数crontab_test使用了
+def Check_monitor_equipment():
+    try:
+        monitor_count = "mt_count"
+        monitor_date = "mt_date"
+        Total = 0
+        Overdue = 0
+        Warning = 0
+        count_stand = Configuration.objects.get(Type="mt_count")
+        date_stand = Configuration.objects.get(Type="mt_date")
+        start=datetime.now()
+        c_date = (datetime.now() + timedelta(days=int(date_stand.Max))).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+        # HaveMaintainer_danger_data='select "SN",count(*) from "PartItem" where to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\''+' and "NextCheckCount"-"UsedTimes" < ' + str(count_stand) + ' OR to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\''
+        # sql = 'select "SN" from "PartItem" where to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\''+' and "NextCheckCount"-"UsedTimes" < ' + str(count_stand) + ' OR to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\''
+
+        # 有保养人的 达到超标的数量和SN
+        M_danger = 'select "Maintainer",count(*),array_agg("SN") from "PartItem" where "NextCheckDate" IS NOT NULL AND "Maintainer" IS NOT NULL AND ("NextCheckCount"<"UsedTimes" OR to_char("NextCheckDate",\'yyyy-MM-dd\') <\'' + start.strftime("%Y-%m-%d") + '\') GROUP BY "Maintainer"'
+        # 没有有保养人的 达到超标的数量和SN
+        N_danger = 'select "Maintainer",count(*),array_agg("SN") from "PartItem" where "NextCheckDate" IS NOT NULL AND "Maintainer" IS NULL AND ("NextCheckCount"<"UsedTimes" OR to_char("NextCheckDate",\'yyyy-MM-dd\') <\'' + start.strftime("%Y-%m-%d") + '\') GROUP BY "Maintainer"'
+
+        # 有保养人的 达到预警的数量和SN
+        M_warning = 'select "Maintainer",count(*),array_agg("SN") FROM "PartItem" where "NextCheckDate" IS NOT NULL AND "Maintainer" IS NOT NULL'
+        M_warning = M_warning + ' AND (("NextCheckCount"-"UsedTimes" <= ' + str(count_stand.Max) + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+        M_warning = M_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)) GROUP BY "Maintainer"'
+
+        # 没有保养人的 达到预警的数量和SN
+        N_warning = 'select "Maintainer",count(*),array_agg("SN") FROM "PartItem" where "NextCheckDate" IS NOT NULL AND "Maintainer" IS NULL'
+        N_warning = N_warning + ' AND (("NextCheckCount"-"UsedTimes" <= ' + str(count_stand.Max) + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+        N_warning = N_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)) GROUP BY "Maintainer"'
+
+        cur = connection.cursor()
+        cur.execute(M_danger)
+        danger = cur.fetchall()
+        cur.execute(N_danger)
+        danger2 = cur.fetchall()
+        cur.execute(M_warning)
+        warning = cur.fetchall()
+        cur.execute(N_warning)
+        warning2 = cur.fetchall()
+
+        #有保养人   的超标和预警数据
+        data_mail = mail_data_fun(danger, warning)
+        # print(data_mail)
+        # 没有保养人 的超标和预警数据
+        data_mail2 = mail_data_fun(danger2, warning2)
+        # print(data_mail2)
+
+        #有保养人的 超标的和预警的数据的提醒的发送mail给保养人
+        if len(data_mail) > 0:
+            for i in range(0,len(data_mail)):
+                email_maintainer = []
+                email_maintainer.append(str(data_mail[i][0])+'@wistron.com')
+                Total = data_mail[i][1] + data_mail[i][3]
+                Overdue = data_mail[i][1]
+                Warning = data_mail[i][3]
+                subject = "AEMS Lite System Notification for Equipment Maintenance"
+                content = """
+<pre>
+Dears,
+    AEMS Lite system found that there is equipment to be maintained. 
+    Please take it to do maintenance in time...
+    Total: """ + str(Total) + """
+    Overdue: """ + str(Overdue) + """
+    Warning: """ + str(Warning) + """
+
+
+    THIS EMAIL WAS SENT BY PTS SERVER AUTOMATICALLY. PLEASE DON'T DIRECTLY REPLY!!!
+    AEMS Lite Systemhttp://10.41.95.106:90/index/
+</pre>
+"""
+                mail.sendmail(email_maintainer, content, subject)
+        #没有保养人的 超标的和预警的数据的提醒的发送给设定的邮件接收人
+        if int(data_mail2[0][1]) >0 or int(data_mail2[0][3]) > 0:
+            email_1 = []
+            receiver_list = str((count_stand.Reminders)).split(',')
+            for i in range(len(receiver_list)):
+                email_1.append(receiver_list[i] + '@wistron.com')
+            Total = int(data_mail2[0][1]) + int(data_mail2[0][3])
+            Overdue = data_mail2[0][1]
+            Warning = data_mail2[0][3]
+            subject = "AEMS Lite System Notification for Equipment Maintenance"
+            content = """
+<pre>
+Dears,
+    AEMS Lite system found that there is equipment to be maintained. 
+    Please take it to do maintenance in time...
+    Total: """+str(Total)+"""
+    Overdue: """+str(Overdue)+"""
+    Warning: """+str(Warning)+"""
+
+
+    THIS EMAIL WAS SENT BY PTS SERVER AUTOMATICALLY. PLEASE DON'T DIRECTLY REPLY!!!
+    AEMS Lite Systemhttp://10.41.95.106:90/index/
+</pre>
+"""
+            mail.sendmail(email_1, content, subject)
+            return [Total,Overdue,Warning]
+    except Exception as e:
+        return repr(e)
+
+#数据重组的方法的小工具
+def tab_query_way(tab_normal,tab_warning,tab_danger,tab_info):
+    name_list=[]
+    name_data=[]
+    #获取名字的列表
+    for i in range(0, len(tab_normal)):
+        n_name = tab_normal[i][0]
+        name_list.append(n_name)
+    for j in range(0, len(tab_warning)):
+        w_name = tab_warning[j][0]
+        if w_name not in name_list:
+            name_list.append(w_name)
+    for k in range(0, len(tab_danger)):
+        d_name = tab_danger[k][0]
+        if d_name not in name_list:
+            name_list.append(d_name)
+    for l in range(0, len(tab_info)):
+        i_name = tab_info[l][0]
+        if i_name not in name_list:
+            name_list.append(i_name)
+    # 把数据变成[["name",0,0,0]] 初始化数据
+    for m in range(0, len(name_list)):
+        name_data.append([name_list[m], 0, 0, 0, 0])
+    if len(tab_normal) > 0:
+        for a in range(0, len(name_data)):
+            for b in range(0, len(tab_normal)):
+                if tab_normal[b][0] == name_data[a][0]:
+                    name_data[a][1] = tab_normal[b][1]
+    # 添加warning 数据
+    if len(tab_warning) > 0:
+        for a in range(0, len(name_data)):
+            for b in range(0, len(tab_warning)):
+                if tab_warning[b][0] == name_data[a][0]:
+                    name_data[a][2] = tab_warning[b][1]
+    # 添加danger 数据
+    if len(tab_danger) > 0:
+        for a in range(0, len(name_data)):
+            for b in range(0, len(tab_danger)):
+                if tab_danger[b][0] == name_data[a][0]:
+                    name_data[a][3] = tab_danger[b][1]
+    # 添加info 数据
+    if len(tab_info) > 0:
+        for a in range(0, len(name_data)):
+            for b in range(0, len(tab_info)):
+                if tab_info[b][0] == name_data[a][0]:
+                    name_data[a][4] = tab_info[b][1]
+    return name_data
+
+#邮件接收人数据重组
+def mail_data_fun(danger,warning):
+    mail_list = []
+    mail_data=[]
+    for i in range(0,len(danger)):
+        mail_list.append(danger[i][0])
+    for j in range(0,len(warning)):
+        warning_name = warning[j][0]
+        if warning_name not in mail_list:
+            mail_list.append(warning_name)
+    for k in range(0,len(mail_list)):
+        mail_data.append([mail_list[k],0,[],0,[]])
+    if len(danger) > 0:
+        for a in range(0, len(mail_data)):
+            for b in range(0, len(danger)):
+                if danger[b][0] == mail_data[a][0]:
+                    mail_data[a][1] = danger[b][1]
+                    mail_data[a][2].extend(danger[b][2])
+    if len(warning)>0:
+        for c in range(0,len(mail_data)):
+            for d in range(0,len(warning)):
+                if warning[d][0] == mail_data[c][0]:
+                    mail_data[c][3] = warning[d][1]
+                    mail_data[c][4].extend(warning[d][2])
+    return mail_data
+
+
+
+#用户定义的页码查询数据
+def maintain_monitor_change_page(request):
+    if request.method == "POST":
+        page = int(request.POST.get('page'))
+        number = request.POST.get('num')
+        # 这里是获取近一周的数据，但是由于数据没有更新，所以捞取全部当前的数据
+        start = datetime.now()
+        delta = timedelta(days=300)
+        end = start - delta
+        dict_data = {}
+        data_count = PartItem.objects.order_by("Id").filter(TrnDate__range=(end, start)).count()
+        if number == "All":
+            data = list(PartItem.objects.order_by("Id").filter(TrnDate__range=(end, start)).values())
+            mt_count = list(Configuration.objects.filter(Type="mt_count").values("Max"))
+            mt_date = list(Configuration.objects.filter(Type="mt_date").values("Max"))
+            start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+            # 计算保养次数和保养日期的水准并加入到后面两组数据当中去做判断
+            for i in range(0, len(data)):
+                if data[i]['NextCheckDate'] == None:
+                    data[i]['stand_date'] = "null"
+                else:
+                    time_end = datetime.strptime(str(data[i]['NextCheckDate']).split(' ')[0],
+                                                 "%Y-%m-%d")  # 获取数据表里面的日期数
+                    days = time_end - start_time
+                    data[i]['stand_date'] = days.days
+                if data[i]['NextCheckCount'] == 0:
+                    data[i]['stand_count'] = 0
+                else:
+                    data[i]['stand_count'] = data[i]['NextCheckCount'] - data[i]['UsedTimes']
+            dict_data['data'] = data
+            dict_data['mt_count'] = mt_count
+            dict_data['mt_date'] = mt_date
+            dict_data['page_count'] = data_count
+        if number != "All":
+            number = int(number)
+            page_num = data_count // number  # 总共多少页
+            if data_count % number > 0:
+                page_num = page_num + 1
+            if page_num >= page:
+                data = list(PartItem.objects.order_by("Id").filter(TrnDate__range=(end, start)).values()[
+                            (page - 1) * number:number * page])
+                mt_count = list(Configuration.objects.filter(Type="mt_count").values("Max"))
+                mt_date = list(Configuration.objects.filter(Type="mt_date").values("Max"))
+                start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                # 计算保养次数和保养日期的水准并加入到后面两组数据当中去做判断
+                for i in range(0, len(data)):
+                    if data[i]['NextCheckDate'] == None:
+                        data[i]['stand_date'] = "null"
+                    else:
+                        time_end = datetime.strptime(str(data[i]['NextCheckDate']).split(' ')[0],
+                                                     "%Y-%m-%d")  # 获取数据表里面的日期数
+                        days = time_end - start_time
+                        data[i]['stand_date'] = days.days
+                    if data[i]['NextCheckCount'] == 0:
+                        data[i]['stand_count'] = 0
+                    else:
+                        data[i]['stand_count'] = data[i]['NextCheckCount'] - data[i]['UsedTimes']
+                dict_data['data'] = data
+                dict_data['mt_count'] = mt_count
+                dict_data['mt_date'] = mt_date
+                dict_data['page_count'] = page_num
+        try:
+            return restful.ok(data=dict_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+#用户定义之后的下一个页码的数据
+def maintain_query_next(request):
+    if request.method == "POST":
+        start = datetime.now()
+        delta = timedelta(days=300)
+        end = start - delta
+        page = int(request.POST['page'])
+        number = request.POST['num']
+        sn = str(request.POST.get('sn'))
+        part_name = request.POST.get('partname')
+        status = request.POST.get('status')
+        s_time = request.POST.get('s_time')
+        e_time = request.POST.get('e_time')
+        user = request.POST.get('user')
+        dict_data = {}
+        # 计算 查询数据的总的多少条数据
+        sql_count = 'select count(*) FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime(
+            "%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start.strftime("%Y-%m-%d") + '\''
+        # 查询条件的数据
+        sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate","Maintainer","TrnDate","NextCheckCount" FROM "PartItem" WHERE to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime(
+            "%Y-%m-%d") + '\' and  to_char("TrnDate",\'yyyy-MM-dd\') <=\'' + start.strftime("%Y-%m-%d") + '\''
+        count_count = Configuration.objects.get(Type="mt_count")
+        date = Configuration.objects.get(Type="mt_date")
+        dict_data['limit_value1'] = int(count_count.Max)
+        dict_data['limit_value2'] = date.Max
+        c_count = str(int(count_count.Max))
+        c_date = (start + timedelta(days=int(date.Max))).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+        # try:
+        if sn != "":
+            sql_count = sql_count + 'AND "SN" = \'' + sn + '\''
+            sql = sql + 'AND "SN" = \'' + sn + '\''
+        if part_name != "":
+            sql_count = sql_count + 'AND "PartName" like \'%{0}%\''.format(part_name)
+            sql = sql + 'AND "PartName" like \'%{0}%\''.format(part_name)
+        if s_time != "":
+            sql_count = sql_count + 'AND "TrnDate" >= \'%{0}%\''.format(s_time)
+            sql = sql + 'AND "TrnDate" >= \'%{0}%\''.format(s_time)
+        if e_time != "":
+            sql_count = sql_count + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+            sql = sql + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+        if user != "":
+            sql_count = sql_count + 'AND "Maintainer" ilike \'%{0}%\''.format(user)
+            sql = sql + 'AND "Maintainer" ilike \'%{0}%\''.format(user)
+        if status == "正常":
+            sql_count = sql_count +'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + 'AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' '
+            sql = sql+'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + 'AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' '
+        if status == "预警":
+            sql_count = sql_count+'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + ' AND ("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+            sql_count = sql_count + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)'
+
+            sql = sql+'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + ' AND ("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+            sql = sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0)'
+        if status == "超标":
+            sql = sql+'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\')'
+            sql_count = sql_count+'and to_char("NextCheckDate",\'yyyy-MM-dd\') !=\'None\'' + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\')'
+        if status == "未设定":
+            sql = sql + 'AND "NextCheckDate" IS NULL;'
+            sql_count = sql_count + 'AND "NextCheckDate" IS NULL;'
+        cur = connection.cursor()
+        cur.execute(sql_count)
+        count = cur.fetchall()  # 数量的总数
+        if number == "All":
+            cur = connection.cursor()
+            cur.execute(sql)
+            data = cur.fetchall()
+            # 针对data 进行判断和算出次数水平和周期天数
+            start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+            for i in range(0, len(data)):
+                data[i] = list(data[i])
+                if data[i][6] == None:
+                    data[i].append("null")
+                else:
+                    time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                    days = time_end - start_time
+                    data[i].append(days.days)
+                if data[i][9] == 0:
+                    data[i].append(0)
+                else:
+                    data[i].append(data[i][6] - data[i][4])
+            dict_data['data'] = data
+            dict_data['page_count'] = count[0][0]
+        if number != "All":
+            number = int(number)
+            count_page = count[0][0] // int(number)  # 总数除以一页显示多少条，得到总的页数
+            if count[0][0] % number > 0:
+                count_page += 1
+            if page <= count_page:
+                sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str((page - 1)*number)
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                # 针对data 进行判断和算出次数水平和周期天数
+                start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                for i in range(0, len(data)):
+                    data[i] = list(data[i])
+                    if data[i][6] == None:
+                        data[i].append("null")
+                    else:
+                        time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                        days = time_end - start_time
+                        data[i].append(days.days)
+                    if data[i][9] == 0:
+                        data[i].append(0)
+                    else:
+                        data[i].append(data[i][9] - data[i][4])
+                dict_data['data'] = data
+                dict_data['page_count'] = count_page
+            if page > count_page:
+                sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str(0)
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                # 针对data 进行判断和算出次数水平和周期天数
+                start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                for i in range(0, len(data)):
+                    data[i] = list(data[i])
+                    if data[i][6] == None:
+                        data[i].append("null")
+                    else:
+                        time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                        days = time_end - start_time
+                        data[i].append(days.days)
+                    if data[i][9] == 0:
+                        data[i].append(0)
+                    else:
+                        data[i].append(data[i][9] - data[i][4])
+                dict_data['data'] = data
+                dict_data['page_count'] = count_page
+        return restful.ok(data=dict_data)
+        # except Exception as e:
+        #     return restful.params_error(message=repr(e))
+#用户定义之后的视图数据的页码获取数据
+def maintain_monitor_visual_data(request):
+    if request.method == "POST":
+        start = datetime.now()
+        delta = timedelta(days=300)
+        end = start - delta
+        page = int(request.POST['page'])
+        number = request.POST['num']
+        sn = str(request.POST.get('sn', ''))
+        part_name = str(request.POST.get('partname', ''))
+        status = request.POST.get('status', '')
+        s_time = request.POST.get('s_time', '')
+        e_time = request.POST.get('e_time', '')
+        user = str(request.POST.get('user', ''))
+        dict_data = {}
+        # 计算 查询数据的总的多少条数据
+        sql_count = 'select count(*) FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime(
+            "%Y-%m-%d") + '\' and to_char("TrnDate",\'yyyy-MM-dd\') <= \'' + start.strftime("%Y-%m-%d") + '\''
+        # 查询条件的数据
+        sql = 'select "Id","SN","PartName","CheckCycleCount","UsedTimes","CheckCycle","NextCheckDate","Maintainer","TrnDate","NextCheckCount" FROM "PartItem" WHERE to_char("TrnDate",\'yyyy-MM-dd\') >= \'' + end.strftime(
+            "%Y-%m-%d") + '\' and  to_char("TrnDate",\'yyyy-MM-dd\') <=\'' + start.strftime("%Y-%m-%d") + '\''
+        count_count = Configuration.objects.get(Type="mt_count")
+        date = Configuration.objects.get(Type="mt_date")
+        dict_data['limit_value1'] = int(count_count.Max)
+        dict_data['limit_value2'] = date.Max
+        c_count = str(int(count_count.Max))
+        c_date = (start + timedelta(days=int(date.Max))).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+        try:
+            if sn != "":
+                sql_count = sql_count + 'AND "SN" = \'' + sn + '\''
+                sql = sql + 'AND "SN" = \'' + sn + '\''
+            if part_name != "":
+                sql_count = sql_count + 'AND "PartName" = '+part_name
+                sql = sql + 'AND "PartName" = '+part_name
+            if s_time != "":
+                sql_count = sql_count + 'AND "TrnDate" >= \'%{0}%\''.format(s_time)
+                sql = sql + 'AND "TrnDate" >= \'%{0}%\''.format(s_time)
+            if e_time != "":
+                sql_count = sql_count + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+                sql = sql + 'AND "TrnDate" <= \'%{0}%\''.format(e_time)
+            if user != "":
+                sql_count = sql_count + 'AND "Maintainer" like \'{0}\''.format(user)
+                sql = sql + 'AND "Maintainer" like \'{0}\''.format(user)
+            if status == "#28a745":
+                sql_count = sql_count + 'AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' '
+
+                sql = sql + 'AND "NextCheckCount"-"UsedTimes" > ' + c_count + ' AND to_char("NextCheckDate",\'yyyy-MM-dd\') >\'' + c_date + '\' '
+            if status == "#ffc107":
+                sql_count = sql_count + ' AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                sql_count = sql_count + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))'
+
+                sql = sql + ' AND (("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+                sql = sql + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0))'
+            if status == "#dc3545":
+                sql = sql + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime(
+                    "%Y-%m-%d") + '\')'
+
+                sql_count = sql_count + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime(
+                    "%Y-%m-%d") + '\')'
+            cur = connection.cursor()
+            cur.execute(sql_count)
+            count = cur.fetchall()  # 数量的总数
+            if number == "All":
+                cur = connection.cursor()
+                cur.execute(sql)
+                data = cur.fetchall()
+                # 针对data 进行判断和算出次数水平和周期天数
+                start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                for i in range(0, len(data)):
+                    if data[i][6] == None and data[i][9] == 0:
+                        data[i] = list(data[i])
+                        data[i].append(0)
+                        data[i].append(0)
+                    else:
+                        time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                        days = time_end - start_time
+                        data[i] = list(data[i])
+                        data[i].append(data[i][9] - data[i][4])
+                        data[i].append(days.days)
+                dict_data['data'] = data
+                dict_data['page_count'] = count[0][0]
+            if number != "All":
+                number = int(number)
+                count_page = count[0][0] // int(number)  # 总数除以一页显示多少条，得到总的页数
+                if count[0][0] % number > 0:
+                    count_page += 1
+                if page <= count_page:
+                    sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str((page - 1)*number)
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    # 针对data 进行判断和算出次数水平和周期天数
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    for i in range(0, len(data)):
+                        if data[i][6] == None and data[i][9] == 0:
+                            data[i] = list(data[i])
+                            data[i].append(0)
+                            data[i].append(0)
+                        else:
+                            time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                            days = time_end - start_time
+                            data[i] = list(data[i])
+                            data[i].append(data[i][9] - data[i][4])
+                            data[i].append(days.days)
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count_page
+                if page > count_page:
+                    sql = sql + ' order by "Id" limit ' + str(number) + ' offset ' + str(0)
+                    cur = connection.cursor()
+                    cur.execute(sql)
+                    data = cur.fetchall()
+                    # 针对data 进行判断和算出次数水平和周期天数
+                    start_time = datetime.strptime(str(start).split(' ')[0], "%Y-%m-%d")  # 获取当前的日期
+                    for i in range(0, len(data)):
+                        if data[i][6] == None and data[i][9] == 0:
+                            data[i] = list(data[i])
+                            data[i].append(0)
+                            data[i].append(0)
+                        else:
+                            time_end = datetime.strptime(str(data[i][6]).split(' ')[0], "%Y-%m-%d")
+                            days = time_end - start_time
+                            data[i] = list(data[i])
+                            data[i].append(data[i][9] - data[i][4])
+                            data[i].append(days.days)
+                    dict_data['data'] = data
+                    dict_data['page_count'] = count_page
+            return restful.ok(data=dict_data)
+        except Exception as e:
+            return restful.params_error(message=repr(e))
+
+

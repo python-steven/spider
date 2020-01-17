@@ -1,0 +1,136 @@
+# from app.login.models import BudgetCodeForm
+# from django.db import connection
+# from app import restful
+from openpyxl import load_workbook,Workbook
+# from AEMSLite.app.login import BudgetCodeForm
+from datetime import datetime,timedelta
+import time
+import os
+import psycopg2
+conn = psycopg2.connect(
+                database="aemslite",
+                host="127.0.0.1",
+                user="postgres",
+                password = "1234qwer!@#$QWER",
+                port = 5432,)
+cur=conn.cursor()
+
+sql = 'select "PartItem"."SN","PartItem"."PN","PartItem"."Spec","Status","PartItem"."Maintainer","Content"' \
+      ',to_char("MaintenanceDate",\'yyyy-MM-dd\'),"PartItemId" FROM "MaintenanceLog" left outer join "PartItem" on "MaintenanceLog"."PartItemId" ="PartItem"."Id" '
+def tes():
+    cur.execute(sql)
+    data = cur.fetchall()
+    print(data)
+tes()
+
+
+# start = datetime.now()
+# delta = timedelta(days=300)
+# end = start-delta
+# c_count = str(10)
+# c_date = (start + timedelta(days=20)).strftime("%Y-%m-%d")  # 拿到当前的时间+预警天数得到日期的范围是（当前时间,c_date）
+# # # 正常
+# # sql1 = sql + 'AND ("NextCheckCount"-"UsedTimes" > ' + c_count + ' AND "NextCheckDate" >\'' + c_date + '\' ) GROUP BY "Maintainer"'
+# # # 预警
+# # sql2 = sql + 'AND ("NextCheckCount"-"UsedTimes"<='+c_count+' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\') OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d") + '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0) GROUP BY "Maintainer"'
+# # # 超标
+# # sql3 = sql + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \'' + start.strftime("%Y-%m-%d") + '\') GROUP BY "Maintainer"'
+#
+#
+# tab_sql = 'SELECT "Maintainer", COUNT("PartName") FROM "PartItem" where to_char("TrnDate",\'yyyy-MM-dd\') >=\' '+ end.strftime("%Y-%m-%d")+'\' and  to_char("TrnDate",\'yyyy-MM-dd\') <=\''+start.strftime("%Y-%m-%d")+'\''
+#
+# # 正常
+# table_normal = tab_sql + 'AND "NextCheckCount"-"UsedTimes" > '+c_count+' AND "NextCheckDate" >\''+c_date+'\' GROUP BY "Maintainer"'
+# # 预警
+# table_warning = tab_sql + ' AND ("NextCheckCount"-"UsedTimes" <= ' + c_count + ' AND "NextCheckCount"-"UsedTimes" >= 0 AND to_char("NextCheckDate",\'yyyy-MM-dd\') >=\'' + start.strftime("%Y-%m-%d") + '\')'
+# table_warning = table_warning + ' OR  (to_char("NextCheckDate",\'yyyy-MM-dd\')>=\'' + start.strftime("%Y-%m-%d")+ '\' AND to_char("NextCheckDate",\'yyyy-MM-dd\') <= \'' + c_date + '\' AND "NextCheckCount"-"UsedTimes">=0) GROUP BY "Maintainer"'
+# # 超标
+# table_danger = tab_sql + 'AND ("NextCheckCount"-"UsedTimes" < 0 OR "NextCheckDate" < \''+start.strftime("%Y-%m-%d")+'\') GROUP BY "Maintainer"'
+
+    # cur.execute(table_warning)
+    # tab_warning = cur.fetchall()
+    # print(table_warning)
+    # cur.execute(table_danger)
+    # tab_danger = cur.fetchall()
+    # print(table_danger)
+    #
+    # name_list = []
+    # name_data = []
+    # #     #获取名字的列表
+    # for i in range(0, len(tab_normal)):
+    #     n_name = tab_normal[i][0]
+    #     name_list.append(n_name)
+    # for j in range(0, len(tab_warning)):
+    #     w_name = tab_warning[j][0]
+    #     if w_name not in name_list:
+    #         name_list.append(w_name)
+    # for k in range(0, len(tab_danger)):
+    #     d_name = tab_danger[k][0]
+    #     if d_name not in name_list:
+    #         name_list.append(d_name)
+    # # 把数据变成[["name",0,0,0]]
+    # for l in range(0, len(name_list)):
+    #     name_data.append([name_list[l], 0, 0, 0])
+    # # 添加normal 数据：[]   [('name',12)]
+    # print(name_data)
+    # print(name_list)
+    # if len(tab_normal) > 0:
+    #     for a in range(0, len(name_data)):
+    #         for b in range(0, len(tab_normal)):
+    #             if tab_normal[b][0] == name_data[a][0]:
+    #                 name_data[a][1] = tab_normal[b][1]
+    # # 添加warning 数据
+    # if len(tab_warning) > 0:
+    #     for a in range(0, len(name_data)):
+    #         for b in range(0, len(tab_warning)):
+    #             if tab_warning[b][0] == name_data[a][0]:
+    #                 name_data[a][2] = tab_warning[b][1]
+    # # 添加danger 数据
+    # if len(tab_danger) > 0:
+    #     for a in range(0, len(name_data)):
+    #         for b in range(0, len(tab_danger)):
+    #             if tab_danger[b][0] == name_data[a][0]:
+    #                 name_data[a][3] = tab_danger[b][1]
+    #
+    # # da = tab_query_way(warning,danger,normal)
+    # print(name_data)
+
+
+# def tab_query_way(tab_warning,tab_danger,tab_normal):
+#     name_list=[]
+#     name_data=[]
+# #     #获取名字的列表
+#     for i in range(0,len(tab_normal)):
+#         n_name=tab_normal[i][0]
+#         name_list.append(n_name)
+#     for j in range(0,len(tab_warning)):
+#         w_name=tab_warning[j][0]
+#         if w_name not in name_list:
+#             name_list.append(w_name)
+#     for k in range(0,len(tab_danger)):
+#         d_name=tab_danger[k][0]
+#         if d_name not in name_list:
+#             name_list.append(d_name)
+#     #把数据变成[["name",0,0,0]]
+#     for l in range(0,len(name_list)):
+#         name_data.append([name_list[l],0,0,0])
+#     #添加normal 数据：[]   [('name',12)]
+#     if len(tab_normal)>0:
+#         for a in range(0,len(name_data)):
+#             for b in range(0,len(tab_normal)):
+#                 if tab_normal[b][0] == name_data[a][0]:
+#                     name_data[a][1]=tab_normal[b][1]
+#     #添加warning 数据
+#     if len(tab_warning)>0:
+#         for a in range(0,len(name_data)):
+#             for b in range(0,len(tab_warning)):
+#                 if tab_warning[b][0] == name_data[a][0]:
+#                     name_data[a][2] = tab_warning[b][1]
+#     # 添加danger 数据
+#     if len(tab_danger) > 0:
+#         for a in range(0, len(name_data)):
+#             for b in range(0, len(tab_danger)):
+#                 if tab_danger[b][0] == name_data[a][0]:
+#                     name_data[a][3] =tab_danger[b][1]
+#     return  name_data
+

@@ -1,0 +1,137 @@
+from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from app.login.models import User,Department,Customer,BudgetCodeForm,PartItem,PartItemResult,MaintenanceLog,Configuration
+# from app.login.views import Update_User_IsActivated
+from django.views.generic.base import View
+from django.db import connection
+# from django.http import HttpResponseRedirect,HttpResponse
+from app import restful,mail
+# from datetime import datetime,timedelta,date
+# from django.conf import settings
+# import random
+# import string
+# import os
+# import time
+# from openpyxl import load_workbook,Workbook
+import json
+
+#统计分析的数据的 拉出一周的数据， 这里先拉出来前面10条的数据
+class analysis_equipment_info(View):
+    def get(self,request):
+        try:
+            visua_data = {}
+            #柱状图需要的数据
+            sql1 = 'SELECT "ErrorCode", COUNT("SN") FROM "PartItemResult" where "Result"= \'FAIL\' GROUP BY "ErrorCode"'
+            cur = connection.cursor()
+            cur.execute(sql1)
+            visua_data['errorcode'] = cur.fetchall()
+
+            sql2 = 'SELECT "PartName", COUNT("SN") FROM "PartItemResult" GROUP BY "PartName"'
+            cur = connection.cursor()
+            cur.execute(sql2)
+            visua_data['Partname'] = cur.fetchall()
+
+            try:
+                sql3 = 'SELECT COUNT("SN") FROM "PartItemResult" where "Result"= \'FAIL\' and "UsedTimes">0'
+                cur = connection.cursor()
+                cur.execute(sql3)
+                visua_data['user'] = cur.fetchall()
+            except:
+                sql3 = 'SELECT COUNT("SN") FROM "PartItemResult" where "Result"= \'FAIL\' and "UsedTimes">0'
+                cur = connection.cursor()
+                cur.execute(sql3)
+                visua_data['user'] = cur.fetchall()
+
+            sql4 = 'SELECT COUNT("SN"),"PartName" FROM (select distinct "SN","PartName","Result" from "PartItemResult") as foo where "Result"= \'FAIL\' GROUP BY "PartName"'
+            cur = connection.cursor()
+            cur.execute(sql4)
+            visua_data['filterSN'] = cur.fetchall()
+
+            return restful.ok(data=visua_data)
+        except:
+            return restful.params_error(message='data error')
+    def post(self,request):
+        pass
+
+
+#数据显示部分
+def analysis_data(request):
+    if request.method == "GET":
+        #数据显示部分的data
+        try:
+            data = PartItemResult.objects.order_by().all().values()
+            data =list(data)
+            return restful.ok(data=data)
+        except:
+            return restful.params_error(message="data got fail")
+
+#设置区间的获取的数据
+def analysis_setup_data(request):
+    if request.method == "GET":
+        try:
+            limit_data = Configuration.objects.filter(Type="sa_block").values("Id","Min","Max")
+            limit_data = list(limit_data)
+            return restful.ok(data=limit_data)
+        except:
+            return restful.params_error(message="data error")
+
+#设置区间提交的数据摄入表里面
+@csrf_exempt
+def analysis_setup_value(request):
+    if request.method == "POST":
+        try:
+            # to-do
+        except:
+            return None
+
+#数据的获取的数据
+def analysis_query_data(request):
+    if request.method == "GET":
+        try:
+            data = {}
+            stage =list(PartItemResult.objects.all().values("Stage").distinct())
+            fixtureId = list(PartItemResult.objects.all().values("FixtureId").distinct())
+            USN = list(PartItemResult.objects.all().values("USN").distinct())
+            data['stage']=stage
+            data['fixtureId']=fixtureId
+            data['USN']=USN
+            return restful.ok(data=data)
+        except:
+            return restful.params_error(message="data error")
+#根据提交的数据进行查询函数的定义
+def analysis_query_info(request):
+    if request.method =="POST":
+        startTime = request.POST['begin']
+        endTime = request.POST['end']
+        stage = request.POST['stage']
+        fixture = request.POST['fixture']
+        usn = request.POST['usn']
+
+        sql = 'SELECT * FROM "PartItemResult" where 1=1 '
+        if stage !="":
+            sql = sql+'AND "Stage"= \'' + stage + '\''
+        if fixture != "":
+            sql = sql + 'AND "FixtureId"=\'' + fixture + '\''
+        if usn != "":
+            sql = sql + 'AND "USN"=\'' + usn + '\''
+        if startTime !="":
+            sql = sql+ 'AND "TrnDate" >=\'' + startTime + '\''
+        if endTime !="":
+            sql = sql+ 'AND "TrnDate" <=\'' + endTime + '\''
+        cur = connection.cursor()
+        cur.execute(sql)
+        data = cur.fetchall()
+
+        #柱状图需要的数据显示部分 建立在查询数据的基础值上面进行的
+        sql1  = 'SELECT "ErrorCode", COUNT("SN") FROM '+sql+' where "Result"= \'FAIL\' GROUP BY "ErrorCode"'
+        sql2 = 'SELECT "PartName", COUNT("SN") FROM '+ sql +' GROUP BY "PartName"'
+        sql4 = 'SELECT COUNT("SN"),"PartName" FROM (select distinct "SN","PartName","Result" from "PartItemResult") as foo where "Result"= \'FAIL\' GROUP BY "PartName"'
+
+
+
+        try:
+            return restful.ok(data=data)
+        except:
+            return restful.params_error(message="query data is null")
